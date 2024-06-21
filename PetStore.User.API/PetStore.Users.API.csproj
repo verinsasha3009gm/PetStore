@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>4ef243d7-4c02-44ab-8f9a-d9c1835e0af7</UserSecretsId>
+    <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.5" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
+    <PackageReference Include="Serilog" Version="3.1.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PetStore.User.Application\PetStore.Users.Application.csproj" />
+    <ProjectReference Include="..\PetStore.User.Consumer\PetStore.Users.Consumer.csproj" />
+    <ProjectReference Include="..\PetStore.User.DAL\PetStore.Users.DAL.csproj" />
+    <ProjectReference Include="..\PetStore.User.Domain\PetStore.Users.Domain.csproj" />
+    <ProjectReference Include="..\PetStore.User.Producer\PetStore.Users.Producer.csproj" />
+  </ItemGroup>
+
+</Project>

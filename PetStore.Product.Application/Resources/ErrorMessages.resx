@@ -1,0 +1,264 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CategoryAlreadyExists" xml:space="preserve">
+    <value>CategoryAlreadyExists</value>
+    <comment>CategoryAlreadyExists</comment>
+  </data>
+  <data name="CategoryIsNotFound" xml:space="preserve">
+    <value>CategoryIsNotFound</value>
+    <comment>CategoryIsNotFound</comment>
+  </data>
+  <data name="DescriptionNotFound" xml:space="preserve">
+    <value>DescriptionNotFound</value>
+    <comment>DescriptionNotFound</comment>
+  </data>
+  <data name="ErrorAllTegs" xml:space="preserve">
+    <value>ErrorAllTegs</value>
+    <comment>ErrorAllTegs</comment>
+  </data>
+  <data name="ErrorCreateCategory" xml:space="preserve">
+    <value>ErrorCreateCategory</value>
+    <comment>ErrorCreateCategory</comment>
+  </data>
+  <data name="ErrorCreateDescription" xml:space="preserve">
+    <value>ErrorCreateDescription</value>
+    <comment>ErrorCreateDescription</comment>
+  </data>
+  <data name="ErrorCreateProduct" xml:space="preserve">
+    <value>ErrorCreateProduct</value>
+    <comment>ErrorCreateProduct</comment>
+  </data>
+  <data name="ErrorCreateProductInCategory" xml:space="preserve">
+    <value>ErrorCreateProductInCategory</value>
+    <comment>ErrorCreateProductInCategory</comment>
+  </data>
+  <data name="ErrorCreateProductPassport" xml:space="preserve">
+    <value>ErrorCreateProductPassport</value>
+    <comment>ErrorCreateProductPassport</comment>
+  </data>
+  <data name="ErrorDeleteCategory" xml:space="preserve">
+    <value>ErrorDeleteCategory</value>
+    <comment>ErrorDeleteCategory</comment>
+  </data>
+  <data name="ErrorDeleteDescription" xml:space="preserve">
+    <value>ErrorDeleteDescription</value>
+    <comment>ErrorDeleteDescription</comment>
+  </data>
+  <data name="ErrorDeleteProduct" xml:space="preserve">
+    <value>ErrorDeleteProduct</value>
+    <comment>ErrorDeleteProduct</comment>
+  </data>
+  <data name="ErrorDeleteProductInCategory" xml:space="preserve">
+    <value>ErrorDeleteProductInCategory</value>
+    <comment>ErrorDeleteProductInCategory</comment>
+  </data>
+  <data name="ErrorDeleteProductPassport" xml:space="preserve">
+    <value>ErrorDeleteProductPassport</value>
+    <comment>ErrorDeleteProductPassport</comment>
+  </data>
+  <data name="ErrorGetAllProduct" xml:space="preserve">
+    <value>ErrorGetAllProduct</value>
+    <comment>ErrorGetAllProduct</comment>
+  </data>
+  <data name="ErrorGetAllProductsInCategory" xml:space="preserve">
+    <value>ErrorGetAllProductsInCategory</value>
+    <comment>ErrorGetAllProductsInCategory</comment>
+  </data>
+  <data name="ErrorGetCategory" xml:space="preserve">
+    <value>ErrorGetCategory</value>
+    <comment>ErrorGetCategory</comment>
+  </data>
+  <data name="ErrorGetDescription" xml:space="preserve">
+    <value>ErrorGetDescription</value>
+    <comment>ErrorGetDescription</comment>
+  </data>
+  <data name="ErrorGetProduct" xml:space="preserve">
+    <value>ErrorGetProduct</value>
+    <comment>ErrorGetProduct</comment>
+  </data>
+  <data name="ErrorGetProductInCategory" xml:space="preserve">
+    <value>ErrorDeleteProductInCategory</value>
+    <comment>ErrorDeleteProductInCategory</comment>
+  </data>
+  <data name="ErrorGetProductPassport" xml:space="preserve">
+    <value>ErrorGetProductPassport</value>
+    <comment>ErrorGetProductPassport</comment>
+  </data>
+  <data name="ErrorTegCreate" xml:space="preserve">
+    <value>ErrorTegCreate</value>
+    <comment>ErrorTegCreate</comment>
+  </data>
+  <data name="ErrorTegDelete" xml:space="preserve">
+    <value>ErrorTegDelete</value>
+    <comment>ErrorTegDelete</comment>
+  </data>
+  <data name="ErrorTegGet" xml:space="preserve">
+    <value>ErrorTegGet</value>
+    <comment>ErrorTegGet</comment>
+  </data>
+  <data name="ErrorTegUpdate" xml:space="preserve">
+    <value>ErrorTegUpdate</value>
+    <comment>ErrorTegUpdate</comment>
+  </data>
+  <data name="ErrorUpdateCategory" xml:space="preserve">
+    <value>ErrorUpdateCategory</value>
+    <comment>ErrorUpdateCategory</comment>
+  </data>
+  <data name="ErrorUpdateDescription" xml:space="preserve">
+    <value>ErrorUpdateDescription</value>
+    <comment>ErrorUpdateDescription</comment>
+  </data>
+  <data name="ErrorUpdateProduct" xml:space="preserve">
+    <value>ErrorUpdateProduct</value>
+    <comment>ErrorUpdateProduct</comment>
+  </data>
+  <data name="ErrorUpdateProductInCategory" xml:space="preserve">
+    <value>ErrorUpdateProductInCategory</value>
+    <comment>ErrorUpdateProductInCategory</comment>
+  </data>
+  <data name="ErrorUpdateProductPassport" xml:space="preserve">
+    <value>ErrorUpdateProductPassport</value>
+    <comment>ErrorUpdateProductPassport</comment>
+  </data>
+  <data name="ProductAlreadyExists" xml:space="preserve">
+    <value>ProductAlreadyExists</value>
+    <comment>ProductAlreadyExists</comment>
+  </data>
+  <data name="ProductIsNotFound" xml:space="preserve">
+    <value>ProductIsNotFound</value>
+    <comment>ProductIsNotFound</comment>
+  </data>
+  <data name="ProductPassportAlreadyExists" xml:space="preserve">
+    <value>ProductPassportAlreadyExists</value>
+    <comment>ProductPassportAlreadyExists</comment>
+  </data>
+  <data name="ProductPassportNotFound" xml:space="preserve">
+    <value>ProductPassportNotFound</value>
+    <comment>ProductPassportNotFound</comment>
+  </data>
+  <data name="TegAlreadyExists" xml:space="preserve">
+    <value>TegAlreadyExists</value>
+    <comment>TegAlreadyExists</comment>
+  </data>
+  <data name="TegIsNotFound" xml:space="preserve">
+    <value>TegIsNotFound</value>
+    <comment>TegIsNotFound</comment>
+  </data>
+</root>
