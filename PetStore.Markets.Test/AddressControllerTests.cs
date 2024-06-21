@@ -13,6 +13,8 @@ using PetStore.Markets.DAL.Repository;
 using PetStore.Markets.Domain.Dto.Address;
 using PetStore.Markets.Domain.Entity;
 using PetStore.Markets.Domain.Result;
+using PetStore.Markets.Domain.Settings;
+using PetStore.Markets.Producer.Interfaces;
 using Serilog;
 
 namespace PetStore.Markets.Test
@@ -41,8 +43,16 @@ namespace PetStore.Markets.Test
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
+            IMessageProducer producer = new Producer.Producer();
+            IOptions<RabbitMqSettings> optRabbit = Options.Create<RabbitMqSettings>(new RabbitMqSettings()
+            {
+                ExchangeName = "",
+                QueueName = "",
+                RoutingKey = ""
+            });
             var addressService =
-                new AddressService(AddressRepository,UserRepository,EmployeRepository,EmployePassportRepository,MarketRepository, mapper, logger.Object,cache);
+                new AddressService(AddressRepository,UserRepository,EmployeRepository,EmployePassportRepository
+                ,MarketRepository, mapper, logger.Object,cache,producer,optRabbit);
             _controller = new(addressService);
         }
         [Fact]
