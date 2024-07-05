@@ -25,14 +25,17 @@ namespace PetStore.Markets.Application.Service
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly ICacheService _cacheService;
+        private readonly IUnitOfWork _unitOfWork;
         public EmployePassportService(IBaseRepository<EmployePassport> employePassportRepository,
-            IBaseRepository<Employe> employeRepository, IMapper mapper, ILogger logger, ICacheService cacheService)
+            IBaseRepository<Employe> employeRepository, IMapper mapper, ILogger logger, ICacheService cacheService
+            , IUnitOfWork unitOfWork)
         {
             _EmployePassportRepository = employePassportRepository;
             _EmployeRepository = employeRepository;
             _mapper = mapper;
             _logger = logger;
             _cacheService = cacheService;
+            _unitOfWork = unitOfWork;
         }
         public async Task<BaseResult<EmployePassportDto>> CreateEmployePassportAsync(CreateEmployePassportDto dto)
         {
@@ -106,36 +109,44 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.EmployePassportNotFound
                 };
             }
-            try
+            using(var trasaction = await _unitOfWork.BeginTransitionAsync())
             {
-                empPassport = new EmployePassport()
+                try
                 {
-                    Post = dto.Post,
-                    Salary = dto.Salary,
-                    Experience = dto.Expirience,
-                    GuidId =Guid.NewGuid().ToString(),
-                    EnployeId = emp.Id,
-                };
-                empPassport = await _EmployePassportRepository.CreateAsync(empPassport);
+                    empPassport = new EmployePassport()
+                    {
+                        Post = dto.Post,
+                        Salary = dto.Salary,
+                        Experience = dto.Expirience,
+                        GuidId =Guid.NewGuid().ToString(),
+                        EnployeId = emp.Id,
+                    };
+                    empPassport = await _unitOfWork.EmployesPassports.CreateAsync(empPassport);
 
-                emp.EmployePassportId = empPassport.Id;
-                _EmployeRepository.UpdateAsync(emp);
-                await _EmployeRepository.SaveChangesAsync();
-                _cacheService.Set(emp.GuidId, emp);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<EmployePassportDto>
+                    emp.EmployePassportId = empPassport.Id;
+                    _unitOfWork.Employes.UpdateAsync(emp);
+                    await _unitOfWork.Employes.SaveChangesAsync();
+
+                    await trasaction.CommitAsync();
+                    _cacheService.Set(emp.GuidId, emp);
+
+                    return new BaseResult<EmployePassportDto>
+                    {
+                        Data = _mapper.Map<EmployePassportDto>(empPassport)
+                    };
+                }
+                catch (Exception ex)
                 {
-                    ErrorMessage = ErrorMessage.EmployePassportCreateError,
-                    ErrorCode = (int)ErrorCodes.EmployePassportCreateError
-                };
+                    await trasaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<EmployePassportDto>
+                    {
+                        ErrorMessage = ErrorMessage.EmployePassportCreateError,
+                        ErrorCode = (int)ErrorCodes.EmployePassportCreateError
+                    };
+                }
             }
-            return new BaseResult<EmployePassportDto>
-            {
-                Data = _mapper.Map<EmployePassportDto>(empPassport)
-            };
+            
         }
 
         public async Task<BaseResult<EmployePassportDto>> DeleteEmployePassportAsync(string Email, string Password)

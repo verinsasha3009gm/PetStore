@@ -18,17 +18,19 @@ namespace PetStore.Users.Application.Services
         private readonly IBaseRepository<User> _UserRepository;
         private readonly IBaseRepository<CartLine> _CartLineRepository;
         private readonly IBaseRepository<Product> _ProductRepository;
+        private readonly IUnitOfWork _UnitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly ICacheService _CacheService;
         public CartService(IBaseRepository<Cart> CartRepository, IBaseRepository<User> UserRepository,
             IBaseRepository<CartLine> CartLineRepository, IBaseRepository<Product> ProductRepository,
-            IMapper mapper,ILogger logger,ICacheService cacheService)
+            IUnitOfWork unitOfWork,IMapper mapper,ILogger logger,ICacheService cacheService)
         {
             _CartRepository = CartRepository;
             _UserRepository = UserRepository;
             _CartLineRepository = CartLineRepository;
             _ProductRepository = ProductRepository;
+            _UnitOfWork = unitOfWork;
             _mapper = mapper;
             _logger = logger;
             _CacheService = cacheService;
@@ -75,32 +77,37 @@ namespace PetStore.Users.Application.Services
                     Product = prod,
                     Cart = cart
                 };
-                try
+                using(var transaction = await _UnitOfWork.BeginTransitionAsync())
                 {
-                    await _CartLineRepository.CreateAsync(newCartLine);
-                    _CartRepository.UpdateAsync(cart);
-                    await _CartRepository.SaveChangesAsync();
-                    _UserRepository.UpdateAsync(user);
-                    await _UserRepository.SaveChangesAsync();
-                    _CacheService.Set(user.GuidId, user);
-                }
-                catch(Exception ex)
-                {
-                    _logger.Error(ex,ex.Message);
-                    return new BaseResult<CartLineDto>
+                    try
                     {
-                        ErrorCode= (int)ErrorCodes.InternalServerException,
-                        ErrorMessage = ErrorMessage.InternalServerException,
-                    };
+                        await _UnitOfWork.CartLines.CreateAsync(newCartLine);
+                        _UnitOfWork.Carts.UpdateAsync(cart);
+                        await _UnitOfWork.Carts.SaveChangesAsync();
+                        _UnitOfWork.Users.UpdateAsync(user);
+                        await _UnitOfWork.Users.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        _CacheService.Set(user.GuidId, user);
+                        return new BaseResult<CartLineDto>
+                        {
+                            Data = _mapper.Map<CartLineDto>(newCartLine),
+                        };
+                    }
+                    catch(Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.Error(ex,ex.Message);
+                        return new BaseResult<CartLineDto>
+                        {
+                            ErrorCode= (int)ErrorCodes.InternalServerException,
+                            ErrorMessage = ErrorMessage.InternalServerException,
+                        };
+                    }
                 }
-                return new BaseResult<CartLineDto>
-                {
-                    Data = _mapper.Map<CartLineDto>(newCartLine),
-                };
             }
-            cartLine.Count++;
             try
             {
+                cartLine.Count++;
                 _CartLineRepository.UpdateAsync(cartLine);
                 await _CartLineRepository.SaveChangesAsync();
             }

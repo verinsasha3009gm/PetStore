@@ -14,11 +14,6 @@ using PetStore.Products.Domain.Dto.Product;
 using PetStore.Products.Domain.Entity;
 using PetStore.Products.Domain.Result;
 using PetStore.Products.Domain.Settings;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PetStore.Products.Tests
 {
@@ -53,20 +48,23 @@ namespace PetStore.Products.Tests
             _controller = new ProductController(prodService);
         }
         [Fact]
-        public async Task GetAllTest()
+        public async Task GetAll_Product_IsOk_Test()
         {
             var resultAll = await _controller.GetAllProducts();
             var ActionResultAll = Assert.IsType<ActionResult<CollectionResult<ProductDto>>>(resultAll);
             var OkRewuredResultAll = Assert.IsType<OkObjectResult>(ActionResultAll.Result);
             Assert.IsType<CollectionResult<ProductDto>>(OkRewuredResultAll.Value);
-
+        }
+        [Fact]
+        public async Task GetAll_ProductsInCategory_IsOk_Test() 
+        { 
             var resultAllCategory = await _controller.GetProductCategoryAllAsync("name");
             var ActionResultAllCategory = Assert.IsType<ActionResult<CollectionResult<ProductDto>>>(resultAllCategory);
             var OkRewuredResultAllCategory = Assert.IsType<OkObjectResult>(ActionResultAllCategory.Result);
             Assert.IsType<CollectionResult<ProductDto>>(OkRewuredResultAllCategory.Value);
         }
         [Fact]
-        public async Task Test()
+        public async Task CRUD_Product_IsOk_Test()
         {
             var dtoCreate = new CreateProductDto("NewName","drdrdrdr",199,1);
             var resultCreate = await _controller.CreateProductDtoAsync(dtoCreate);
@@ -90,7 +88,6 @@ namespace PetStore.Products.Tests
             var ActionResultDelete = Assert.IsType<ActionResult<BaseResult<ProductDto>>>(resultDelete);
             var OkRequredResultDelete = Assert.IsType<OkObjectResult>(ActionResultDelete.Result);
             Assert.IsType<BaseResult<ProductDto>>(OkRequredResultDelete.Value);
-
         }
     }
 }

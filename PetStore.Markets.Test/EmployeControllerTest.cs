@@ -39,6 +39,14 @@ namespace PetStore.Markets.Test
             var EmployeRepository = new BaseRepository<Employe>(DbContext);
             var EmployePassportRepository = new BaseRepository<EmployePassport>(DbContext);
             var TokenRepository = new BaseRepository<Token>(DbContext);
+            var MarketRepository = new BaseRepository<Market>(DbContext);
+            var ProductLineRepository = new BaseRepository<ProductLine>(DbContext);
+            var marketCaptails = new BaseRepository<MarketCapital>(DbContext);
+            var marketCaptailsProductLines = new BaseRepository<MarketCapitalProductLine>(DbContext);
+
+            var unitOfWork = new UnitOfWork(DbContext, UserRepository, MarketRepository, AddressRepository
+                , ProductLineRepository, EmployeRepository, EmployePassportRepository, marketCaptails
+                , marketCaptailsProductLines);
 
             var jwtSettings = new JwtSettings()
             {
@@ -61,57 +69,78 @@ namespace PetStore.Markets.Test
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
-            var empPasspService = new EmployePassportService(EmployePassportRepository,EmployeRepository,mapper,logger.Object, cache);
-            var empService = new EmployeService(EmployeRepository,TokenRepository,tokenService,empPasspService,mapper,logger.Object, cache);
+            var empPasspService = new EmployePassportService(EmployePassportRepository,EmployeRepository,mapper
+                ,logger.Object, cache, unitOfWork);
+            var empService = new EmployeService(EmployeRepository,TokenRepository,tokenService,empPasspService
+                ,mapper,logger.Object, cache);
             _controller = new EmployeController(empService);
         }
         [Fact]
-        public async Task GetAllEmployeTest()
+        public async Task GetAll_Employe_IsOk_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
+            //Arrange
+            //Act
             var resultGet = await
                 _controller.GetAllEmployeAsync();
+            //Assert
             var actionResultGet = Assert
             .IsType<ActionResult<CollectionResult<EmployeDto>>>(resultGet);
             var okRequestResultGet = Assert.IsType<OkObjectResult>(actionResultGet.Result);
             Assert.IsType<CollectionResult<EmployeDto>>(okRequestResultGet.Value);
         }
         [Fact]
-        public async Task EmployeTest()
+        public async Task Logik_Employe_IsOk_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
+            //Arrange
             var rand = new Random().Next(10000);
             var dtoReg = new RegistrationEmployeDto($"NewEmp#{rand}","M",$"NewEmp{rand}@gmail.com","qwertyuiop","qwertyuiop","Casier",1.0m,1);
+            //Act
             var resultReg = await
                 _controller.RegistrationEmployeAsync(dtoReg);
+            //Assert
             var actionResultReg = Assert
             .IsType<ActionResult<BaseResult<EmployeDto>>>(resultReg);
             var okRequestResultReg = Assert.IsType<OkObjectResult>(actionResultReg.Result);
             Assert.IsType<BaseResult<EmployeDto>>(okRequestResultReg.Value);
 
+            //Arrange
             var dtoLog = new LoginEmployeDto($"NewEmp{rand}@gmail.com", "qwertyuiop");
+            //Act
             var resultLog = await _controller.LoginEmployeAsync(dtoLog);
+            //Assert
             var actionResultLog = Assert.IsType<ActionResult<BaseResult<TokenDto>>>(resultLog);
             var okRequestResultLog = Assert.IsType<OkObjectResult>(actionResultLog.Result);
             Assert.IsType<BaseResult<TokenDto>>(okRequestResultLog.Value);
 
+            //Arrange
+            //Act
             var resultGet = await _controller.GetEmployeAsync($"NewEmp{rand}@gmail.com");
+            //Assert
             var actionResultGet = Assert.IsType<ActionResult<BaseResult<EmployeDto>>>(resultGet);
             var okRequestResultGet = Assert.IsType<OkObjectResult>(actionResultGet.Result);
             Assert.IsType<BaseResult<EmployeDto>>(okRequestResultGet.Value);
 
+            //Arrange
+            //Act
             var resultGetGuid = await _controller.GetEmployeGuidIdAsync($"NewEmp{rand}@gmail.com","qwertyuiop");
+            //Assert
             var actionResultGetGuid = Assert.IsType<ActionResult<BaseResult<EmployeGuidDto>>>(resultGetGuid);
             var okRequestResultGetGuid = Assert.IsType<OkObjectResult>(actionResultGetGuid.Result);
             Assert.IsType<BaseResult<EmployeGuidDto>>(okRequestResultGetGuid.Value);
 
+            //Arrange
             var dtoUpdate = new UpdateEmployeDto("Emelia", "M", $"NewEmp{rand}@gmail.com", "qwertyuiop");
+            //Act
             var resultUpdate = await _controller.UpdateEmployeAsync(dtoUpdate);
+            //Assert
             var actionResultUpdate = Assert.IsType<ActionResult<BaseResult<EmployeDto>>>(resultUpdate);
             var okRequestResultUpdate = Assert.IsType<OkObjectResult>(actionResultUpdate.Result);
             Assert.IsType<BaseResult<EmployeDto>>(okRequestResultUpdate.Value);
 
+            //Arrange
+            //Act
             var resultDelete = await _controller.DeleteEmployeAsync($"NewEmp{rand}@gmail.com","qwertyuiop");
+            //Assert
             var actionResultDelete = Assert.IsType<ActionResult<BaseResult<EmployeDto>>>(resultDelete);
             var okRequestResultDelete = Assert.IsType<OkObjectResult>(actionResultDelete.Result);
             Assert.IsType<BaseResult<EmployeDto>>(okRequestResultDelete.Value);

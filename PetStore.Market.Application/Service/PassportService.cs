@@ -109,7 +109,7 @@ namespace PetStore.Markets.Application.Service
                 Data = _mapper.Map<PassportDto>(passport)
             };
         }
-        public async Task<CollectionResult<PassportDto>> GetPassportNameAsync(string Name, string Familien)
+        public async Task<CollectionResult<PassportDto>> GetAllPassportNameAsync(string Name, string Familien)
         {
             var passports = await _passportReposiory.GetAll()
                 .Where(p => p.Familien == Familien).Where(p => p.Name == Name).ToListAsync();

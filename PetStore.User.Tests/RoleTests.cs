@@ -44,31 +44,41 @@ namespace PetStore.Users.Tests
             _controller = new(roleService);
         }
         [Fact]
-        public async Task RoleTest()
+        public async Task CRUD_Role_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
             var dtoCreate = new RoleDto("NameTestRole");
+            //Act
             var resultCreate = await _controller.CreateRoleAsync(dtoCreate);
+            //Assert
             var actionResultCreate = Assert
             .IsType<ActionResult<BaseResult<RoleDto>>>(resultCreate);
             var okRequestResultCreate = Assert.IsType<OkObjectResult>(actionResultCreate.Result);
             Assert.IsType<BaseResult<RoleDto>>(okRequestResultCreate.Value);
 
+            //Arrange
+            //Act
             var resultGet = await _controller.GetRoleAsync("NameTestRole");
+            //Assert
             var actionResult = Assert
             .IsType<ActionResult<BaseResult<RoleDto>>>(resultGet);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             Assert.IsType<BaseResult<RoleDto>>(okRequestResult.Value);
 
+            //Arrange
             var dtoUpdate = new UpdateRoleDto("NameTestRole", "NameTestRole#New");
+            //Act
             var resultUpdate = await _controller.UpdateRoleAsync(dtoUpdate);
+            //Assert
             var actionResultUpdate = Assert
             .IsType<ActionResult<BaseResult<RoleDto>>>(resultUpdate);
             var okRequestResultUpdate = Assert.IsType<OkObjectResult>(actionResultUpdate.Result);
             Assert.IsType<BaseResult<RoleDto>>(okRequestResultUpdate.Value);
 
+            //Arrange
+            //Act
             var resultDelete = await _controller.DeleteRoleAsync("NameTestRole#New");
+            //Assert
             var actionResultDelete = Assert
             .IsType<ActionResult<BaseResult<RoleDto>>>(resultDelete);
             var okRequestResultDelete = Assert.IsType<OkObjectResult>(actionResultDelete.Result);

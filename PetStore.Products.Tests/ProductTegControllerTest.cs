@@ -27,29 +27,46 @@ namespace PetStore.Products.Tests
                 //.UseSnakeCaseNamingConvention()
                 .Options;
             var DbContext = new ApplicationDbContext(options);
-            var repositoryTeg = new BaseRepository<Teg>(DbContext);
+
+            var repositoryCategory = new BaseRepository<Category>(DbContext);
             var repositoryProduct = new BaseRepository<Product>(DbContext);
             var repositoryProductTeg = new BaseRepository<ProductTeg>(DbContext);
-            var prodTegService = new ProductTegService(repositoryTeg,repositoryProduct,repositoryProductTeg);
+            var repositoryTeg = new BaseRepository<Teg>(DbContext);
+            var repositoryDescription = new BaseRepository<Description>(DbContext);
+            var repositoryProductPassport = new BaseRepository<ProductPassport>(DbContext);
+
+            var UnitOfWork = new UnitOfWork(DbContext, repositoryProduct, repositoryTeg, repositoryProductTeg
+                , repositoryProductPassport, repositoryDescription,repositoryCategory);
+            var prodTegService = new ProductTegService(repositoryTeg,repositoryProduct,repositoryProductTeg,UnitOfWork);
             _controller = new(prodTegService);
         }
         [Fact]
-        public async Task Test()
+        public async Task CRUD_ProductTeg_IsOk_Test()
         {
+            //Arrange
             var dtoAdd = new ProductTegDto("NameTest","Fruct");
+            //Act
             var resultAdd = await _controller.CreateProductTegAsync(dtoAdd);
+            //Assert
             var ActionResultAdd = Assert.IsType<ActionResult<BaseResult<ProductTegDto>>>(resultAdd);
             var OkRewuredResultAdd = Assert.IsType<OkObjectResult>(ActionResultAdd.Result);
             Assert.IsType<BaseResult<ProductTegDto>>(OkRewuredResultAdd.Value);
 
+            //Arrange
             var dtoUpdate = new UpdateProductTegDto("NameTest","Fruct","Tomato");
+            //Act
             var resultUpdate = await _controller.UpdateProductTegAsync(dtoUpdate);
+            //Assert
             var ActionResultUpdate = Assert.IsType<ActionResult<BaseResult<ProductTegDto>>>(resultUpdate);
             var OkRewuredResultUpdate = Assert.IsType<OkObjectResult>(ActionResultUpdate.Result);
             var Data = Assert.IsType<BaseResult<ProductTegDto>>(OkRewuredResultUpdate.Value);
             Assert.NotNull(Data);
 
+            //Arrange
+
+            //Act
             var resultRemove = await _controller.RemoveProductTegAsync(Data.Data.prodName,Data.Data.tegName);
+            //Assert
             var ActionResultRemove = Assert.IsType<ActionResult<BaseResult<ProductTegDto>>>(resultRemove);
             var OkRewuredResultRemove = Assert.IsType<OkObjectResult>(ActionResultRemove.Result);
             Assert.IsType<BaseResult<ProductTegDto>>(OkRewuredResultRemove.Value);

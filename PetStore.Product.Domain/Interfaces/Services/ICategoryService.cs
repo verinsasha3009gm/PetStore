@@ -45,6 +45,6 @@ namespace PetStore.Products.Domain.Interfaces.Services
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
-        Task<BaseResult<CategoryDto>> RemoveProductInCategoryAsync(ProductInCategoryDto dto);
+        Task<BaseResult<CategoryDto>> RemoveProductInCategoryAsync(string nameCategory, string nameProduct);
     }
 }

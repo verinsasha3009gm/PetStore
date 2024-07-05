@@ -21,6 +21,8 @@ namespace PetStore.Markets.DAL.Configuration
             builder.Property(p=>p.Country).IsRequired().HasMaxLength(100);
             builder.Property(p => p.MarketId);
 
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<Address>
             {
                 new Address()

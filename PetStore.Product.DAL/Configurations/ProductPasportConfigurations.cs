@@ -19,6 +19,8 @@ namespace PetStore.Products.DAL.Configurations
             builder.Property(p => p.Description).IsRequired().HasMaxLength(2000);
             builder.Property(p => p.GuidId).IsRequired().HasMaxLength(100);
 
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<ProductPassport>
             {
                 new ProductPassport()

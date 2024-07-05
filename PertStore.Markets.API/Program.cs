@@ -9,9 +9,10 @@ using PetStore.Markets.Producer.DependencyInjection;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection(nameof(RabbitMqSettings)));
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Defaultsection));
+builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection(nameof(RedisSettings)));
 builder.Services.AddControllers();
-builder.Services.AddRedis();
-builder.Services.AddDependencyInjection();
+builder.Services.AddDependencyInjection(builder.Configuration);
 builder.Services.AddAccessData(builder.Configuration);
 builder.Services.AddSwagger();
 

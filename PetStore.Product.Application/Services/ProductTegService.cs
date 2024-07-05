@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using PetStore.Products.Application.Resources;
 using PetStore.Products.Domain.Dto.ProductTeg;
 using PetStore.Products.Domain.Entity;
+using PetStore.Products.Domain.Enum;
 using PetStore.Products.Domain.Interfaces.Repository;
 using PetStore.Products.Domain.Interfaces.Services;
 using PetStore.Products.Domain.Result;
@@ -18,12 +20,14 @@ namespace PetStore.Products.Application.Services
         private readonly IBaseRepository<Teg> _TegRepository;
         private readonly IBaseRepository<Product> _ProductRepository;
         private readonly IBaseRepository<ProductTeg> _ProductTegRepository;
+        private readonly IUnitOFWork _unitOFWork;
         public ProductTegService(IBaseRepository<Teg> TegRepository, IBaseRepository<Product> ProductRepository,
-            IBaseRepository<ProductTeg> ProductTegRepository)
+            IBaseRepository<ProductTeg> ProductTegRepository,IUnitOFWork unitOFWork)
         {
             _TegRepository = TegRepository;
             _ProductRepository = ProductRepository;
             _ProductTegRepository = ProductTegRepository;
+            _unitOFWork = unitOFWork;
         }
         public async Task<BaseResult<ProductTegDto>> CreateProductTeg(ProductTegDto dto)
         {
@@ -145,16 +149,34 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = "Error"
                 };
             }
-            _ProductTegRepository.DeleteAsync(prodTeg);
-            await _ProductTegRepository.SaveChangesAsync();
 
-            prodTeg.TegId = newTegName.Id;
-            await _ProductTegRepository.CreateAsync(prodTeg);
-
-            return new BaseResult<ProductTegDto>()
+            using (var transaction = await _unitOFWork.BeginTransitionAsync())
             {
-                Data = new ProductTegDto(dto.prodName, dto.newTeg)
-            };
+                try
+                {
+                    _unitOFWork.ProductTegs.DeleteAsync(prodTeg);
+                    await _ProductTegRepository.SaveChangesAsync();
+
+                    prodTeg.TegId = newTegName.Id;
+                    await _unitOFWork.ProductTegs.CreateAsync(prodTeg);
+
+                    await _unitOFWork.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return new BaseResult<ProductTegDto>()
+                    {
+                        Data = new ProductTegDto(dto.prodName, dto.newTeg)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return new BaseResult<ProductTegDto>()
+                    {
+                        ErrorMessage = ErrorMessages.ErrorAllTegs,
+                        ErrorCode = (int)ErrorCodes.ErrorAllTegs,
+                    };
+                }
+            }
         }
     }
 }

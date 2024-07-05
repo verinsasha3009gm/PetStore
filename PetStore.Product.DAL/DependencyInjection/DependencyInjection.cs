@@ -28,6 +28,7 @@ namespace PetStore.Products.DAL.DependencyInjection
         }
         public static void Inteseptor(this IServiceCollection services) 
         {
+            services.AddScoped<IUnitOFWork, UnitOfWork>();
             services.AddScoped<IBaseRepository<Product>,BaseRepository<Product>>();
             services.AddScoped<IBaseRepository<Description>, BaseRepository<Description>>();
             services.AddScoped<IBaseRepository<ProductPassport>, BaseRepository<ProductPassport>>();

@@ -10,7 +10,7 @@ namespace PetStore.Markets.Domain.Interfaces.Service
 {
     public interface IPassportService
     {
-        Task<CollectionResult<PassportDto>> GetPassportNameAsync(string Name, string Familien);
+        Task<CollectionResult<PassportDto>> GetAllPassportNameAsync(string Name, string Familien);
         Task<BaseResult<PassportDto>> GetPassportAsync(string PassportSeria, long PassportNumber);
         Task<BaseResult<PassportDto>> CreatePassportAsync(CreatePassportDto dto);
         Task<BaseResult<PassportDto>> UpdatePassportAsync(UpdatePassportDto dto);

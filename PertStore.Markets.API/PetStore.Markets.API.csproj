@@ -9,14 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Middlewares\**" />
+    <Content Remove="Middlewares\**" />
+    <EmbeddedResource Remove="Middlewares\**" />
+    <None Remove="Middlewares\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PetStore.Market.Application\PetStore.Markets.Application.csproj" />
     <ProjectReference Include="..\PetStore.Market.Consumer\PetStore.Markets.Consumer.csproj" />
     <ProjectReference Include="..\PetStore.Markets.DAL\PetStore.Markets.DAL.csproj" />
     <ProjectReference Include="..\PetStore.Markets.Domain\PetStore.Markets.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Middlewares\" />
   </ItemGroup>
 
   <ItemGroup>

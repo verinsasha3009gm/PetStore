@@ -22,13 +22,15 @@ namespace PetStore.Users.Application.Services
         private readonly IBaseRepository<Role> _roleRepository;
         private readonly IBaseRepository<UserRole> _userRoleRepository;
         private readonly ILogger _logger;
+        private readonly IUnitOfWork _unitOfWork;
         public UserRoleService( IBaseRepository<User> UserRepository, IBaseRepository<Role> RoleRepository,
-            IBaseRepository<UserRole> userRoleRepository, ILogger logger)
+            IBaseRepository<UserRole> userRoleRepository, ILogger logger,IUnitOfWork unitOfWork)
         {
             _userRepository = UserRepository;
             _roleRepository = RoleRepository;
             _userRoleRepository = userRoleRepository;
             _logger = logger;
+            _unitOfWork = unitOfWork;
         }
         public async Task<BaseResult<UserRoleDto>> AddRoleForUserAsync(UserRoleDto dto)
         {
@@ -56,7 +58,7 @@ namespace PetStore.Users.Application.Services
                         ErrorMessage = ErrorMessage.RoleNotFound
                     };
                 }
-                UserRole userRole = new UserRole()
+                var userRole = new UserRole()
                 {
                     RoleId = role.Id,
                     UserId = user.Id
@@ -193,25 +195,30 @@ namespace PetStore.Users.Application.Services
                 UserId = user.Id,
                 RoleId = newRoleForUser.Id,
             };
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _userRoleRepository.DeleteAsync(userRole);
-                await _userRoleRepository.SaveChangesAsync();
-                await _userRoleRepository.CreateAsync(newUserRole);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex,ex.Message);
-                return new BaseResult<UserRoleDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.InternalServerException,
-                    ErrorMessage = ErrorMessage.InternalServerException
+                    _userRoleRepository.DeleteAsync(userRole);
+                    await _userRoleRepository.SaveChangesAsync();
+                    await _userRoleRepository.CreateAsync(newUserRole);
+                    await transaction.CommitAsync();
+                    return new BaseResult<UserRoleDto>()
+                    {
+                        Data = new UserRoleDto(dto.UserLogin,dto.NewRole)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex,ex.Message);
+                    return new BaseResult<UserRoleDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.InternalServerException,
+                        ErrorMessage = ErrorMessage.InternalServerException
+                    };
                 };
-            };
-            return new BaseResult<UserRoleDto>()
-            {
-                Data = new UserRoleDto(dto.UserLogin,dto.NewRole)
-            };
+            }
         }
     }
 }

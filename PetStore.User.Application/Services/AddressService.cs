@@ -18,14 +18,16 @@ namespace PetStore.Users.Application.Services
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly ICacheService _cacheService;
+        private readonly IUnitOfWork _unitOfWork;
         public AddressService(IBaseRepository<Address> AddressRepository, IBaseRepository<User> UserRepository
-            ,IMapper mapper,ILogger logger, ICacheService cacheService)
+            ,IMapper mapper,ILogger logger, ICacheService cacheService,IUnitOfWork unitOfWork)
         {
             _AddressRepository = AddressRepository;
             _UserRepository = UserRepository;
             _mapper = mapper;
             _logger = logger;
             _cacheService = cacheService;
+            _unitOfWork = unitOfWork;
         }
         public async Task<BaseResult<Address>> AddAddressInRabbit(Address address)
         {
@@ -118,27 +120,32 @@ namespace PetStore.Users.Application.Services
                     ErrorMessage = ErrorMessage.AddressAlreadyExists
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                await _AddressRepository.CreateAsync(addressNew);
-                user.Addresses.Add(addressNew);
-                _UserRepository.UpdateAsync(user);
-                await _UserRepository.SaveChangesAsync();
-                _cacheService.Set(addressNew.GuidId, addressNew);
-            }
-            catch(Exception ex) 
-            {
-                _logger.Error(ex,ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.InternalServerException,
-                    ErrorMessage = ErrorMessage.InternalServerException
-                };
+                    await _AddressRepository.CreateAsync(addressNew);
+                    user.Addresses.Add(addressNew);
+                    _UserRepository.UpdateAsync(user);
+                    await _UserRepository.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    _cacheService.Set(addressNew.GuidId, addressNew);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(addressNew),
+                    };
+                }
+                catch(Exception ex) 
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex,ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.InternalServerException,
+                        ErrorMessage = ErrorMessage.InternalServerException
+                    };
+                }
             }
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(addressNew),
-            };
         }
         public async Task<BaseResult<AddressDto>> GetAddressInUserAsync(string guidId, string userLogin)
         {
@@ -223,26 +230,31 @@ namespace PetStore.Users.Application.Services
                     ErrorMessage = ErrorMessage.AddressNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(guidId);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex,ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.InternalServerException,
-                    ErrorMessage = ErrorMessage.InternalServerException
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+                    user.Addresses.Remove(address);
+                    _unitOfWork.Users.UpdateAsync(user);
+                    await transaction.CommitAsync();
+                    return new BaseResult<AddressDto>
+                    { 
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex,ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.InternalServerException,
+                        ErrorMessage = ErrorMessage.InternalServerException
+                    };
+                }
             }
-
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
     }
 }

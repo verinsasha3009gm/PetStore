@@ -26,6 +26,8 @@ namespace PetStore.Markets.DAL.Configuration
                 .HasForeignKey(p => p.UserId)
                 .HasPrincipalKey(p => p.Id);
 
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<User>
             {
                 new User

@@ -72,12 +72,5 @@ namespace PetStore.Users.API
                 opt.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory,xmlFile));
             });
         }
-        public static void AddRedis(this IServiceCollection services)
-        {
-            services.AddStackExchangeRedisCache(options => {
-                options.Configuration = "localhost";
-                options.InstanceName = "local";
-            });
-        }
     }
 }

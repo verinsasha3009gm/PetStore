@@ -23,6 +23,9 @@ namespace PetStore.Markets.DAL.Configuration
                 .WithOne(p => p.Product)
                 .HasForeignKey(p => p.ProductId)
                 .HasPrincipalKey(p => p.Id);
+
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<Product>
             {
                 new Product()

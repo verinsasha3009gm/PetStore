@@ -12,6 +12,7 @@ using Serilog;
 using System;
 using Microsoft.Extensions.Options;
 using PetStore.Markets.Domain.Settings;
+using Microsoft.VisualBasic;
 
 namespace PetStore.Markets.Application.Service
 {
@@ -27,10 +28,11 @@ namespace PetStore.Markets.Application.Service
         private readonly ICacheService _cacheService;
         private readonly IMessageProducer _messageProducer;
         private readonly IOptions<RabbitMqSettings> _rabbitOptions;
+        private readonly IUnitOfWork _unitOfWork;
         public AddressService(IBaseRepository<Address> AddressRepository, IBaseRepository<User> userRepository,
             IBaseRepository<Employe> empRepository, IBaseRepository<EmployePassport> empPassportRepository,
             IBaseRepository<Market> marketRepository,IMapper mapper, ILogger logger, ICacheService cacheService,
-            IMessageProducer messageProducer,IOptions<RabbitMqSettings> rabbitOptions)
+            IMessageProducer messageProducer,IOptions<RabbitMqSettings> rabbitOptions,IUnitOfWork unitOfWork)
         {
             _AddressRepository = AddressRepository;
             _UserRepository = userRepository;
@@ -42,6 +44,7 @@ namespace PetStore.Markets.Application.Service
             _cacheService = cacheService;
             _messageProducer = messageProducer;
             _rabbitOptions = rabbitOptions;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<BaseResult<AddressGuidDto>> CreateAddressAsync(AddressDto dto)
@@ -178,10 +181,10 @@ namespace PetStore.Markets.Application.Service
 
         public async Task<BaseResult<AddressDto>> AddAddressInEmployePassportAsync(AddressEmployePassportDto dto)
         {
-            var emp = await _EmployeRepository.GetAll()
+            var employe = await _EmployeRepository.GetAll()
                 .Include(p=>p.EmployePassport)
                 .FirstOrDefaultAsync(p => p.Name == dto.EmployeName);
-            if (emp == null)
+            if (employe == null)
             {
                 return new BaseResult<AddressDto>
                 {
@@ -189,8 +192,8 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.EmployeNotFound
                 };
             }
-            var empPassp = emp.EmployePassport;
-            if (empPassp == null)
+            var employePassport = employe.EmployePassport;
+            if (employePassport == null)
             {
                 return new BaseResult<AddressDto>
                 {
@@ -205,7 +208,7 @@ namespace PetStore.Markets.Application.Service
                 .FirstOrDefaultAsync(p => p.Country == dto.Country);
             if(address != null)
             {
-                address.EmployePassportId = emp.Id;
+                address.EmployePassportId = employe.Id;
                 _AddressRepository.UpdateAsync(address);
                 await _AddressRepository.SaveChangesAsync();
                 _cacheService.Set(address.GuidId, address);
@@ -214,43 +217,49 @@ namespace PetStore.Markets.Application.Service
                     Data = new AddressDto(address.Country, address.Region, address.City, address.Street)
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                address = new Address
+                try
                 {
-                    Street = dto.Street,
-                    City = dto.City,
-                    Region = dto.Region,
-                    Country = dto.Country,
-                    EmployePassportId = empPassp.Id,
-                    GuidId = Guid.NewGuid().ToString(),
-                };
-                await _AddressRepository.CreateAsync(address);
-                _cacheService.Set(address.GuidId, address);
-                empPassp.Address = address;
-                _EmployePassportRepository.UpdateAsync(empPassp);
-                await _EmployePassportRepository.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                    address = new Address
+                    {
+                        Street = dto.Street,
+                        City = dto.City,
+                        Region = dto.Region,
+                        Country = dto.Country,
+                        EmployePassportId = employePassport.Id,
+                        GuidId = Guid.NewGuid().ToString(),
+                    };
+                    await _unitOfWork.Addresses.CreateAsync(address);
+                    _cacheService.Set(address.GuidId, address);
+                    employePassport.Address = address;
+                    _unitOfWork.EmployesPassports.UpdateAsync(employePassport);
+                    await _unitOfWork.EmployesPassports.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch (Exception ex)
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
         public async Task<BaseResult<AddressDto>> AddAddressInEmployePassportGuidAsync(AddressEmployePassportGuidDto dto)
         {
-            var emp = await _EmployePassportRepository.GetAll().FirstOrDefaultAsync(p => p.GuidId == dto.EmployePassportId);
-            if (emp == null)
+            var employePassport = await _EmployePassportRepository.GetAll().FirstOrDefaultAsync(p => p.GuidId == dto.EmployePassportId);
+            if (employePassport == null)
             {
                 return new BaseResult<AddressDto>
                 {
@@ -269,34 +278,40 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound
                 };
             }
-            
-            try
+            using (var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                address.EmployePassportId = emp.Id;
-                _AddressRepository.UpdateAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                _cacheService.Set(address.GuidId, address);
-
-                emp.Address= address;
-                _EmployePassportRepository.UpdateAsync(emp);
-                await _EmployePassportRepository.SaveChangesAsync();
-                _cacheService.Set(emp.GuidId, emp);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    address.EmployePassportId = employePassport.Id;
+                    _unitOfWork.Addresses.UpdateAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+                    _cacheService.Set(address.GuidId, address);
+
+                    employePassport.Address= address;
+                    _unitOfWork.EmployesPassports.UpdateAsync(employePassport);
+                    await _unitOfWork.EmployesPassports.SaveChangesAsync();
+                    _cacheService.Set(employePassport.GuidId, employePassport);
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey
+                        , _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
 
         public async Task<BaseResult<AddressDto>> AddAddressInMarketAsync(AddressMarketDto dto)
@@ -317,50 +332,78 @@ namespace PetStore.Markets.Application.Service
                 .FirstOrDefaultAsync(p => p.Country == dto.Country);
             if (address != null) 
             {
-                address.MarketId = market.Id;
-                _AddressRepository.UpdateAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                _cacheService.Set(address.GuidId,address);
-                _messageProducer
-                    .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-                return new BaseResult<AddressDto>
+                using(var transaction = await _unitOfWork.BeginTransitionAsync())
                 {
-                    Data = new AddressDto(address.Country, address.Region, address.City, address.Street)
-                };
+                    try
+                    {
+                        address.MarketId = market.Id;
+                        _unitOfWork.Addresses.UpdateAsync(address);
+                        await _unitOfWork.Addresses.SaveChangesAsync();
+                        market.Adress = address;
+                        _unitOfWork.Markets.UpdateAsync(market);
+                        await _unitOfWork.Markets.SaveChangesAsync();
+
+                        await transaction.CommitAsync();
+
+                        _cacheService.Set(address.GuidId,address);
+                        _messageProducer
+                            .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                        return new BaseResult<AddressDto>
+                        {
+                            Data = new AddressDto(address.Country, address.Region, address.City, address.Street)
+                        };
+                    }
+                    catch(Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.Error(ex, ex.Message);
+                        return new BaseResult<AddressDto>
+                        {
+                            ErrorCode = (int)ErrorCodes.AddressCreateError,
+                            ErrorMessage = ErrorMessage.AddressCreateError,
+                        };
+                    }
+                }
             }
-            address = new Address
+            using (var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                Street = dto.Street,
-                City = dto.City,
-                Region = dto.Region,
-                Country = dto.Country,
-                MarketId = market.Id,
-                GuidId = Guid.NewGuid().ToString(),
-            };
-            try
-            {
-                await _AddressRepository.CreateAsync(address);
-                _cacheService.Set(address.GuidId, address); 
-                market.Adress = address;
-                _MarketRepository.UpdateAsync(market);
-                await _MarketRepository.SaveChangesAsync();
-                _cacheService.Set(market.GuidId, market);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    address = new Address
+                    {
+                        Street = dto.Street,
+                        City = dto.City,
+                        Region = dto.Region,
+                        Country = dto.Country,
+                        MarketId = market.Id,
+                        GuidId = Guid.NewGuid().ToString(),
+                    };
+                    await _unitOfWork.Addresses.CreateAsync(address);
+                    _cacheService.Set(address.GuidId, address); 
+                    market.Adress = address;
+                    _unitOfWork.Markets.UpdateAsync(market);
+                    await _unitOfWork.Markets.SaveChangesAsync();
+                    _cacheService.Set(market.GuidId, market);
+
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    await transaction.CommitAsync();
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
         public async Task<BaseResult<AddressDto>> AddAddressInMarketGuidAsync(AddressMarketGuidDto dto)
         {
@@ -383,33 +426,39 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                address.MarketId = market.Id;
-                _AddressRepository.UpdateAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                _cacheService.Set(address.GuidId,address);
-
-                market.AdressId = address.Id;
-                _MarketRepository.UpdateAsync(market);
-                await _MarketRepository.SaveChangesAsync();
-                _cacheService.Set(market.GuidId, market);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    address.MarketId = market.Id;
+                    _unitOfWork.Addresses.UpdateAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+                    _cacheService.Set(address.GuidId,address);
+
+                    market.AdressId = address.Id;
+                    _unitOfWork.Markets.UpdateAsync(market);
+                    await _unitOfWork.Markets.SaveChangesAsync();
+                    _cacheService.Set(market.GuidId, market);
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
 
         public async Task<BaseResult<AddressGuidDto>> AddAddressInUserAsync(AddressUserDto dto)
@@ -448,26 +497,36 @@ namespace PetStore.Markets.Application.Service
                  UserId = user.Id,
                  GuidId = Guid.NewGuid().ToString(),
             };
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                await _AddressRepository.CreateAsync(address);
-                _cacheService.Set(address.GuidId, address);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressGuidDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    await _unitOfWork.Addresses.CreateAsync(address);
+                    _cacheService.Set(address.GuidId, address);
+
+                    user.Adresses.Add(address);
+                    _unitOfWork.Users.UpdateAsync(user);
+                    await _unitOfWork.Users.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressGuidDto>
+                    {
+                        Data = _mapper.Map<AddressGuidDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressGuidDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressGuidDto>
-            {
-                Data = _mapper.Map<AddressGuidDto>(address)
-            };
         }
         public async Task<BaseResult<AddressGuidDto>> AddAddressInUserGuidAsync(AddressUserGuidDto dto)
         {
@@ -489,28 +548,38 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                address.UserId = user.Id;
-                _AddressRepository.UpdateAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                _cacheService.Set(address.GuidId,address);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressGuidDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressCreateError,
-                    ErrorMessage = ErrorMessage.AddressCreateError,
-                };
+                    address.UserId = user.Id;
+                    _unitOfWork.Addresses.UpdateAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+                    _cacheService.Set(address.GuidId,address);
+
+                    user.Adresses.Add(address);
+                    _unitOfWork.Users.UpdateAsync(user);
+                    await _unitOfWork.Users.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressGuidDto>
+                    {
+                        Data = _mapper.Map<AddressGuidDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressGuidDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressCreateError,
+                        ErrorMessage = ErrorMessage.AddressCreateError,
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.POST), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressGuidDto>
-            {
-                Data = _mapper.Map<AddressGuidDto>(address)
-            };
         }
 
         public async Task<CollectionResult<AddressGuidDto>> GetAddressesGuidInUserAsync(string guidId)
@@ -801,27 +870,37 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+
+                    empPassp.Address = null;
+                    _unitOfWork.EmployesPassports.UpdateAsync(empPassp);
+                    await _unitOfWork.EmployesPassports.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey
+                        , _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
         public async Task<BaseResult<AddressDto>> RemoveAddressInEmployePassportGuidAsync(string EmployePassportGuidId)
         {
@@ -843,27 +922,36 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound,
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+
+                    empPassp.Address = null;
+                    _unitOfWork.EmployesPassports.UpdateAsync(empPassp);
+                    await _unitOfWork.EmployesPassports.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
 
         public async Task<BaseResult<AddressDto>> RemoveAddressInMarketAsync(string Name)
@@ -886,27 +974,36 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound 
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+
+                    market.Adress = null;
+                    _unitOfWork.Markets.UpdateAsync(market);
+                    await _unitOfWork.Markets.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
         public async Task<BaseResult<AddressDto>> RemoveAddressInMarketGuidAsync(string MarketGuidId)
         {
@@ -936,27 +1033,36 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound,
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+
+                    market.Adress = null;
+                    _unitOfWork.Markets.UpdateAsync(market);
+                    await _unitOfWork.Markets.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
 
         public async Task<BaseResult<AddressDto>> RemoveAddressInUserAsync(string Login, string Password, string addressGuidId)
@@ -989,27 +1095,36 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.AddressNotFound,
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
+
+                    user.Adresses.Remove(address);
+                    _unitOfWork.Users.UpdateAsync(user);
+                    await _unitOfWork.Users.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch(Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
             }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
         }
         public async Task<BaseResult<AddressDto>> RemoveAddressInUserGuidAsync(string userGuidId,string Password, string addressGuidId)
         {
@@ -1032,28 +1147,37 @@ namespace PetStore.Markets.Application.Service
                     ErrorCode = (int)ErrorCodes.AddressNotFound,
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _AddressRepository.DeleteAsync(address);
-                await _AddressRepository.SaveChangesAsync();
-                //_cacheService.Delete<Address>(address.GuidId);
-            }
-            catch(Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<AddressDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.AddressDeleteError,
-                    ErrorMessage = ErrorMessage.AddressDeleteError
-                };
-            }
-            _messageProducer
-                .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
-            return new BaseResult<AddressDto>
-            {
-                Data = _mapper.Map<AddressDto>(address)
-            };
-        }
+                    _unitOfWork.Addresses.DeleteAsync(address);
+                    await _unitOfWork.Addresses.SaveChangesAsync();
 
+                    user.Adresses.Remove(address);
+                    _unitOfWork.Users.UpdateAsync(user);
+                    await _unitOfWork.Users.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+
+                    _messageProducer
+                        .SendMessage(address, nameof(HttpMethods.DELETE), _rabbitOptions.Value.RoutingKey, _rabbitOptions.Value.ExchangeName);
+                    return new BaseResult<AddressDto>
+                    {
+                        Data = _mapper.Map<AddressDto>(address)
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<AddressDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.AddressDeleteError,
+                        ErrorMessage = ErrorMessage.AddressDeleteError
+                    };
+                }
+            }
+        }
     }
 }

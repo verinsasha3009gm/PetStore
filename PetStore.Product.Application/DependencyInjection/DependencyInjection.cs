@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PetStore.Products.Application.Mapping;
 using PetStore.Products.Application.Services;
 using PetStore.Products.Domain.Interfaces.Services;
+using PetStore.Products.Domain.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,14 @@ namespace PetStore.Products.Application.DependencyInjection
             services.AddAutoMapper(typeof(ProductMapping));
             services.AddAutoMapper(typeof(ProductPassportMapping));
             services.AddAutoMapper(typeof(TegMapping));
+            var options = configuration.GetSection(nameof(RedisSettings));
+            var redisUrl = options["Url"];
+            var instanceName = options["InstanceName"];
+
+            services.AddStackExchangeRedisCache(options => {
+                options.Configuration = redisUrl;
+                options.InstanceName = instanceName;
+            });
             services.Initialize();
         }
         public static void Initialize(this IServiceCollection services)

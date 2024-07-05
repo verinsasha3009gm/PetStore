@@ -9,13 +9,13 @@ using PetStore.Products.Domain.Settings;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection(nameof(RabbitMqSettings)));
+builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection(nameof(RedisSettings)));
 builder.Services.AddControllers();
 builder.Services.AddSwagger();
 
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddDataAccessLayer(builder.Configuration);
 
-builder.Services.AddRedis();
 
 builder.Services.AddProducer();
 
