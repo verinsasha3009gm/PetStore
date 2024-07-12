@@ -29,10 +29,19 @@ namespace PetStore.Markets.Test
                .Options;
 
             var DbContext = new ApplicationDbContext(options);
-            var MarketRepository = new BaseRepository<Market>(DbContext);
             var ProductRepository = new BaseRepository<Product>(DbContext);
-            var MarketCapitalRepository = new BaseRepository<MarketCapital>(DbContext);
-            var ProdLineRepository = new BaseRepository<ProductLine>(DbContext);
+            var UserRepository = new BaseRepository<User>(DbContext);
+            var AddressRepository = new BaseRepository<Address>(DbContext);
+            var EmployeRepository = new BaseRepository<Employe>(DbContext);
+            var EmployePassportRepository = new BaseRepository<EmployePassport>(DbContext);
+            var MarketRepository = new BaseRepository<Market>(DbContext);
+            var ProductLineRepository = new BaseRepository<ProductLine>(DbContext);
+            var marketCaptailsRepository = new BaseRepository<MarketCapital>(DbContext);
+            var marketCaptailsProductLinesRepository = new BaseRepository<MarketCapitalProductLine>(DbContext);
+
+            var unitOfWork = new UnitOfWork(DbContext, UserRepository, MarketRepository, AddressRepository
+                , ProductLineRepository, EmployeRepository, EmployePassportRepository, marketCaptailsRepository
+                , marketCaptailsProductLinesRepository);
             var mappingConfig = new MapperConfiguration(mc =>
             {
                 mc.AddProfile(new MarketMapping());
@@ -43,49 +52,61 @@ namespace PetStore.Markets.Test
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
-            var markCapitalService = new MarketCapitalService(MarketCapitalRepository, ProdLineRepository, 
-                ProductRepository, MarketRepository, mapper, logger.Object,cache); 
+            var markCapitalService = new MarketCapitalService(marketCaptailsRepository, ProductLineRepository, 
+                ProductRepository, MarketRepository, mapper, logger.Object,cache, unitOfWork); 
             _controller = new MarketCapitalController(markCapitalService);
         }
         [Fact]
-        public async Task GetAllTest()
+        public async Task GetAll_ProductLinesInMarketCapitalInDaily_IsOk_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
+            //Act
             var result = await _controller.GetProductsLinesGuidAsync("o440ca5f-cb42-40f9-b180-c7bd81c15630");
+            //Assert
             var actionResult = Assert.IsType<ActionResult<CollectionResult<ProductLineDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             Assert.IsType<CollectionResult<ProductLineDto>>(okRequestResult.Value);
         }
         [Fact]
-        public async Task MarketCapitalTest()
+        public async Task CRUD_MarketCapital_IsOkTest()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
-            //изменить эту дтошку чтоб брал и день еще
+            //Arrange
             var dtoProdLine = new MarketCapitalProductLineDto("Name",DateTime.UtcNow.AddHours(3).ToString(),2, "o550ca5f-cb42-40f9-b180-c7bd81c15630");
+            //Act
             var resultProdLine = await _controller.AddProductLineInMarketAsync(dtoProdLine);
+            //Assert
             var actionResultProdLine = Assert.IsType<ActionResult<BaseResult<MarketCapitalDto>>>(resultProdLine);
             var okRequestResultProdLine = Assert.IsType<OkObjectResult>(actionResultProdLine.Result);
             Assert.IsType<BaseResult<MarketCapitalDto>>(okRequestResultProdLine.Value);
 
+            //Arrange
+            //Act
             var result = await _controller.GetMarketCapitalAsync(DateTime.UtcNow.AddHours(3).ToString(), "o550ca5f-cb42-40f9-b180-c7bd81c15630");
+            //Assert
             var actionResult = Assert.IsType<ActionResult<BaseResult<MarketCapitalDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             Assert.IsType<BaseResult<MarketCapitalDto>>(okRequestResult.Value);
 
+            //Arrange
             var dtoProdLinePlus = new ProductLineNameDto("o550ca5f-cb42-40f9-b180-c7bd81c15630", DateTime.UtcNow.ToString(), "Name");
+            //Act
             var resultProdLinePlus = await _controller.PlusProductLineInMarketAsync(dtoProdLinePlus);
             var actionResultProdLinePlus = Assert.IsType<ActionResult<BaseResult<MarketCapitalDto>>>(resultProdLinePlus);
             var okRequestResultProdLinePlus = Assert.IsType<OkObjectResult>(actionResultProdLinePlus.Result);
             Assert.IsType<BaseResult<MarketCapitalDto>>(okRequestResultProdLinePlus.Value);
 
+            //Arrange
+            //Act
             var resultProdLineMinus = await _controller.MinusProductLineInMarketAsync("o550ca5f-cb42-40f9-b180-c7bd81c15630", DateTime.UtcNow.ToString(), "Name");
+            //Assert
             var actionResultProdLineMinus = Assert.IsType<ActionResult<BaseResult<MarketCapitalDto>>>(resultProdLineMinus);
             var okRequestResultProdLineMinus = Assert.IsType<OkObjectResult>(actionResultProdLineMinus.Result);
             Assert.IsType<BaseResult<MarketCapitalDto>>(okRequestResultProdLineMinus.Value);
 
+            //Arrange
+            //Act
             var resultProdLineRemove = await _controller.RemoveProductLineInMarketAsync("o550ca5f-cb42-40f9-b180-c7bd81c15630", DateTime.UtcNow.ToString(), "Name");
+            //Assert
             var actionResultProdLineRemove = Assert.IsType<ActionResult<BaseResult<MarketCapitalDto>>>(resultProdLineRemove);
             var okRequestResultProdLineRemove = Assert.IsType<OkObjectResult>(actionResultProdLineRemove.Result);
             Assert.IsType<BaseResult<MarketCapitalDto>>(okRequestResultProdLineRemove.Value);

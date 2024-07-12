@@ -123,14 +123,15 @@ namespace PetStore.Products.API.Controllers
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="dto"></param>
+        /// <param name="nameCategory"></param>
+        /// <param name="nameProduct"></param>
         /// <returns></returns>
-        [HttpPost("RemoveProduct")]
+        [HttpDelete("RemoveProduct/{nameCategory}/{nameProduct}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BaseResult<CategoryDto>>> RemoveProductInCategoryAsync(ProductInCategoryDto dto)
+        public async Task<ActionResult<BaseResult<CategoryDto>>> RemoveProductInCategoryAsync(string nameCategory, string nameProduct)
         {
-            var result = await _categoryService.RemoveProductInCategoryAsync(dto);
+            var result = await _categoryService.RemoveProductInCategoryAsync(nameCategory,nameProduct);
             if (result.IsSucces)
             {
                 return Ok(result);

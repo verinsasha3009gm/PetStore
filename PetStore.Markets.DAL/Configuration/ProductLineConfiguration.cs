@@ -20,6 +20,9 @@ namespace PetStore.Markets.DAL.Configuration
             builder.HasMany(p => p.MarketCapitals).WithMany(p => p.ProductsSold).UsingEntity<MarketCapitalProductLine>(
                 p => p.HasOne<MarketCapital>().WithMany().HasForeignKey(p => p.MarketCapitalId),
                 p => p.HasOne<ProductLine>().WithMany().HasForeignKey(p => p.ProductLineId));
+
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<ProductLine>()
             {
                 new ProductLine

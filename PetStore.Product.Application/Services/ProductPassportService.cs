@@ -14,15 +14,17 @@ namespace PetStore.Products.Application.Services
     {
         private readonly IBaseRepository<ProductPassport> _productPassportRepository;
         private readonly IBaseRepository<Product> _productRepository;
+        private readonly IUnitOFWork _UnitOfwork;
         private readonly IMapper _mapper;
         private readonly ICacheService _cacheService;
         public ProductPassportService(IBaseRepository<ProductPassport> productPassport, IBaseRepository<Product> productRepository,
-            IMapper mapper, ICacheService cacheService)
+            IMapper mapper, ICacheService cacheService,IUnitOFWork unitOFWork)
         {
             _productPassportRepository = productPassport;
             _productRepository = productRepository;
             _mapper = mapper;
             _cacheService = cacheService;
+            _UnitOfwork = unitOFWork;
         }
         public async Task<BaseResult<ProductPassportDto>> CreateProductPassportAsync(ProductPassportDto dto)
         {
@@ -192,21 +194,38 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = ErrorMessages.ProductPassportNotFound
                 };
             }
-            prod.ProductPassport = productPassport;
-            _productRepository.UpdateAsync(prod);
-            await _productRepository.SaveChangesAsync();
-
-            productPassport.ProductId = prod.Id;
-            _productPassportRepository.UpdateAsync(productPassport);
-            await _productPassportRepository.SaveChangesAsync();
-
-            _cacheService.Set(prod.GuidId, prod);
-            _cacheService.Set(productPassport.GuidId, productPassport);
-            
-            return new BaseResult<ProductPassportDto>
+            using(var transaction = await _UnitOfwork.BeginTransitionAsync())
             {
-                Data = _mapper.Map<ProductPassportDto>(productPassport) 
-            };
+                try
+                {
+                    prod.ProductPassport = productPassport;
+                    _productRepository.UpdateAsync(prod);
+                    await _productRepository.SaveChangesAsync();
+
+                    productPassport.ProductId = prod.Id;
+                    _productPassportRepository.UpdateAsync(productPassport);
+                    await _productPassportRepository.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    _cacheService.Set(prod.GuidId, prod);
+                    _cacheService.Set(productPassport.GuidId, productPassport);
+            
+                    return new BaseResult<ProductPassportDto>
+                    {
+                        Data = _mapper.Map<ProductPassportDto>(productPassport) 
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return new BaseResult<ProductPassportDto>
+                    {
+                        ErrorCode = 44,
+                        ErrorMessage = ex.Message,
+                    };
+                }
+            }
+
         }
         public async Task<BaseResult<ProductPassportDto>> UpdatePassportInProductAsync(ProductInProductPassportDto dto)
         {
@@ -268,7 +287,6 @@ namespace PetStore.Products.Application.Services
             prod.ProductPassport = null;
             _productRepository.UpdateAsync(prod);
             await _productRepository.SaveChangesAsync(); 
-            var Data = _cacheService.Get<Product>(prod.GuidId);
             _cacheService.Set(prod.GuidId, prod);
             
             return new BaseResult<ProductPassportDto>

@@ -24,6 +24,8 @@ namespace PetStore.Markets.DAL.Configuration
                .HasForeignKey<EmployePassport>(p => p.AddressId)
                .HasPrincipalKey<Address>(p => p.Id);
 
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<EmployePassport>
             {
                 new EmployePassport()

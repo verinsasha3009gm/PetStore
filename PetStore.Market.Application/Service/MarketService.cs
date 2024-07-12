@@ -23,9 +23,11 @@ namespace PetStore.Markets.Application.Service
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly ICacheService _cacheService;
+        private readonly IUnitOfWork _unitOfWork;
         public MarketService(IBaseRepository<Market> marketRepository, IBaseRepository<ProductLine> productLineRepository
             , IBaseRepository<Product> productRepository, IBaseRepository<MarketCapital> marketCapitalRepository
-            , IMarketCapitalService marketCapitalService, IMapper mapper, ILogger logger, ICacheService cacheService)
+            , IMarketCapitalService marketCapitalService, IMapper mapper, ILogger logger, ICacheService cacheService
+            , IUnitOfWork unitOfWork)
         {
             _marketRepository = marketRepository;
             _productLineRepository = productLineRepository;
@@ -35,6 +37,7 @@ namespace PetStore.Markets.Application.Service
             _mapper = mapper;
             _logger = logger;
             _cacheService = cacheService;
+            _unitOfWork = unitOfWork;
         }
         public async Task<BaseResult<ProductLineDto>> AddProductInMarket(MarketProductLineDto dto)
         {
@@ -68,28 +71,34 @@ namespace PetStore.Markets.Application.Service
                     Product = prod,
                     GuidId = Guid.NewGuid().ToString(),
                 };
-                try
+                using(var transaction = await _unitOfWork.BeginTransitionAsync())
                 {
-                    await _productLineRepository.CreateAsync(ProductLine);
-                    _cacheService.Set(ProductLine.GuidId,ProductLine);
-                    market.RangeProducts.Add(ProductLine);
-                    _marketRepository.UpdateAsync(market);
-                    await _marketRepository.SaveChangesAsync();
-                    _cacheService.Set(market.GuidId, market);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex, ex.Message);
-                    return new BaseResult<ProductLineDto>
+                    try
                     {
-                        ErrorMessage = ErrorMessage.ProductLineCreateError,
-                        ErrorCode = (int)ErrorCodes.ProductLineCreateError
-                    };
+                        await _productLineRepository.CreateAsync(ProductLine);
+                        _cacheService.Set(ProductLine.GuidId,ProductLine);
+                        market.RangeProducts.Add(ProductLine);
+                        _marketRepository.UpdateAsync(market);
+                        await _marketRepository.SaveChangesAsync();
+                        _cacheService.Set(market.GuidId, market);
+
+                        await transaction.CommitAsync();
+                        return new BaseResult<ProductLineDto>
+                        {
+                            Data = new ProductLineDto(dto.NameProduct, dto.Count.ToString())
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        _logger.Error(ex, ex.Message);
+                        return new BaseResult<ProductLineDto>
+                        {
+                            ErrorMessage = ErrorMessage.ProductLineCreateError,
+                            ErrorCode = (int)ErrorCodes.ProductLineCreateError
+                        };
+                    }
                 }
-                return new BaseResult<ProductLineDto>
-                {
-                    Data = new ProductLineDto(dto.NameProduct, dto.Count.ToString())
-                };
             }
             try
             {
@@ -368,24 +377,34 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.ProductLineNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                _productLineRepository.DeleteAsync(productLine);
-                await _productLineRepository.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<ProductLineDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.ProductLineDeleteError,
-                    ErrorMessage = ErrorMessage.ProductLineDeleteError
-                };
+                    market.RangeProducts.Remove(productLine);
+                    _unitOfWork.Markets.UpdateAsync(market);
+                    await _unitOfWork.Markets.SaveChangesAsync();
+
+                    _unitOfWork.ProductLines.DeleteAsync(productLine);
+                    await _unitOfWork.ProductLines.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                    return new BaseResult<ProductLineDto>
+                    {
+                        Data =_mapper.Map<ProductLineDto>(productLine),
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<ProductLineDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.ProductLineDeleteError,
+                        ErrorMessage = ErrorMessage.ProductLineDeleteError
+                    };
+                }
             }
-            return new BaseResult<ProductLineDto>
-            {
-                Data =_mapper.Map<ProductLineDto>(productLine),
-            };
         }
 
         public async Task<BaseResult<MarketDto>> CreateMarketAsync(CreateMarketDto dto)

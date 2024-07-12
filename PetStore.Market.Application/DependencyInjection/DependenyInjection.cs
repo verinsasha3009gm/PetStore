@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using PetStore.Markets.Application.Mapping;
 using PetStore.Markets.Application.Service;
 using PetStore.Markets.Domain.Interfaces.Service;
+using PetStore.Markets.Domain.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +14,7 @@ namespace PetStore.Markets.Application.DependencyInjection
 {
     public static class DependenyInjection
     {
-        public static void AddDependencyInjection(this IServiceCollection service)
+        public static void AddDependencyInjection(this IServiceCollection service,IConfiguration configuration)
         {
             service.AddAutoMapper(typeof(AddressMapping));
             service.AddAutoMapper(typeof(EmployeMapping));
@@ -25,6 +27,16 @@ namespace PetStore.Markets.Application.DependencyInjection
             service.AddAutoMapper(typeof(ProductLineMapping));
             service.AddAutoMapper(typeof(ProductMapping));
             service.AddAutoMapper(typeof(UserMapping));
+
+            var options = configuration.GetSection(nameof(RedisSettings));
+            var redisUrl = options["Url"];
+            var instanceName = options["InstanceName"];
+
+            service.AddStackExchangeRedisCache(options => {
+                    options.Configuration = redisUrl;
+                    options.InstanceName = instanceName;
+            });
+            
 
             service.Initialize();
         }

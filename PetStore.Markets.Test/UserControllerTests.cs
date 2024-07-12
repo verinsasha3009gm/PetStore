@@ -42,44 +42,58 @@ namespace PetStore.Markets.Test
             _controller = new(userService);
         }
         [Fact]
-        public async Task Test()
+        public async Task CRUD_User_IsOk_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
             var dtoCreate = new CreateUserDto("qwertyuiop","qwertyuiop","TestLogin","UserEmailTest#@gmail.com");
+            //Act
             var resultCreate = await
                 _controller.CreateUserAsync(dtoCreate);
+            //Assert
             var actionResultCreate = Assert
             .IsType<ActionResult<BaseResult<UserDto>>>(resultCreate);
             var okRequestResultCreate = Assert.IsType<OkObjectResult>(actionResultCreate.Result);
             Assert.IsType<BaseResult<UserDto>>(okRequestResultCreate.Value);
 
+            //Arrange
+            //Act
             var resultGet = await
                 _controller.GetUserAsync("UserEmailTest#@gmail.com");
+            //Assert
             var actionResultGet = Assert
             .IsType<ActionResult<BaseResult<UserGuidDto>>>(resultGet);
             var okRequestResultGet = Assert.IsType<OkObjectResult>(actionResultGet.Result);
             var Data= Assert.IsType<BaseResult<UserGuidDto>>(okRequestResultGet.Value);
             Assert.NotNull(Data);
 
+            //Arrange
             var dtoUpdate = new UpdateUserDto(Data.Data.GuidId, "qwertyuiop", "NewTestLogin", "UserEmailTest#@gmail.com");
+            //Act
             var resultUpdate = await
                 _controller.UpdateUserAsync(dtoUpdate);
+            //Assert
             var actionResultUpdate = Assert
             .IsType<ActionResult<BaseResult<UserDto>>>(resultUpdate);
             var okRequestResultUpdate = Assert.IsType<OkObjectResult>(actionResultUpdate.Result);
             Assert.IsType<BaseResult<UserDto>>(okRequestResultUpdate.Value);
 
+            //Arrange
             var dtoUpdateRole = new UpdateUserRoleDto("UserRole",Data.Data.GuidId, "qwertyuiop");
+            //Act
             var resultUpdateRole = await
                 _controller.UpdateRoleForUserAsync(dtoUpdateRole);
+            //Assert
             var actionResultUpdateRole = Assert
             .IsType<ActionResult<BaseResult<UserDto>>>(resultUpdateRole);
             var okRequestResultUpdateRole = Assert.IsType<OkObjectResult>(actionResultUpdateRole.Result);
             Assert.IsType<BaseResult<UserDto>>(okRequestResultUpdateRole.Value);
 
+
+            //Arrange
+            //Act
             var resultDelete = await
                 _controller.DeleteUserAsync(Data.Data.GuidId,"qwertyuiop");
+            //Assert
             var actionResultDelete = Assert
             .IsType<ActionResult<BaseResult<UserDto>>>(resultDelete);
             var okRequestResultDelete = Assert.IsType<OkObjectResult>(actionResultDelete.Result);

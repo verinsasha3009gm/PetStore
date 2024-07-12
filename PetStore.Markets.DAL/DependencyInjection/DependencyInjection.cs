@@ -22,6 +22,8 @@ namespace PetStore.Markets.DAL.DependencyInjection
         }
         private static void Initialize(this IServiceCollection service)
         {
+            service.AddScoped<IUnitOfWork, UnitOfWork>();
+
             service.AddScoped<IBaseRepository<Product>,BaseRepository<Product>>();
             service.AddScoped<IBaseRepository<User>,BaseRepository<User>>();
             service.AddScoped<IBaseRepository<Employe>,BaseRepository<Employe>>();

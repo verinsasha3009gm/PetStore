@@ -19,13 +19,15 @@ namespace PetStore.Products.Application.Services
     {
         private readonly IBaseRepository<Category> _CategoryRepository;
         private readonly IBaseRepository<Product> _ProductRepository;
+        private readonly IUnitOFWork _unitOfWork;
         private readonly IMapper _mapper;
         public CategoryService(IBaseRepository<Category> categoryRepository,
-            IBaseRepository<Product> productRepository, IMapper mapper)
+            IBaseRepository<Product> productRepository, IMapper mapper,IUnitOFWork unitOFWork)
         {
             _CategoryRepository = categoryRepository;
             _ProductRepository = productRepository;
             _mapper = mapper;
+            _unitOfWork = unitOFWork;
         }
 
         public async Task<BaseResult<CategoryDto>> CreateCategoryAsync(CreateCategoryDto dto)
@@ -74,10 +76,11 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = ErrorMessages.ErrorDeleteCategory
                 };
             }
+            _CategoryRepository.DeleteAsync(category);
+            await _CategoryRepository.SaveChangesAsync();
             return new BaseResult<CategoryDto>()
             {
                 Data = _mapper.Map<CategoryDto>(category),
-                
             };
         }
 
@@ -146,9 +149,9 @@ namespace PetStore.Products.Application.Services
             };
         }
 
-        public async Task<BaseResult<CategoryDto>> RemoveProductInCategoryAsync(ProductInCategoryDto dto)
+        public async Task<BaseResult<CategoryDto>> RemoveProductInCategoryAsync(string nameCategory, string nameProduct)
         {
-            var category = await _CategoryRepository.GetAll().Include(p=>p.Products).FirstOrDefaultAsync(p=>p.Name == dto.nameCategory);
+            var category = await _CategoryRepository.GetAll().Include(p=>p.Products).FirstOrDefaultAsync(p=>p.Name == nameCategory);
             if(category == null)
             {
                 return new BaseResult<CategoryDto>
@@ -157,7 +160,7 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = ErrorMessages.CategoryIsNotFound
                 };
             }
-            var prod = category.Products.FirstOrDefault(p=>p.Name == dto.nameProduct);
+            var prod = category.Products.FirstOrDefault(p=>p.Name == nameProduct);
             if(prod == null)
             {
                 return new BaseResult<CategoryDto>
@@ -166,24 +169,37 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = ErrorMessages.ProductIsNotFound
                 };
             }
-            try
+            using (var transaction = await _unitOfWork.BeginTransitionAsync())
             {
-                category.Products.Remove(prod);
-                _CategoryRepository.UpdateAsync(category);
-                await _CategoryRepository.SaveChangesAsync();
-            }
-            catch
-            {
-                return new BaseResult<CategoryDto>()
+                try
                 {
-                    ErrorMessage = ErrorMessages.ErrorDeleteProductInCategory,
-                    ErrorCode = (int)ErrorCodes.ErrorDeleteProductInCategory
-                };
+                    category = await _unitOfWork.Categories
+                        .GetAll()
+                        .Include(p => p.Products)
+                        .FirstOrDefaultAsync(p => p.Name == nameCategory);
+                    prod = category.Products.FirstOrDefault(p => p.Name == nameProduct);
+
+                    category.Products.Remove(prod);
+                    _unitOfWork.Categories.UpdateAsync(category);
+                    prod.Category = null;
+                    _unitOfWork.Products.UpdateAsync(prod);
+                    await _unitOfWork.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return new BaseResult<CategoryDto>
+                    {   
+                        Data = _mapper.Map<CategoryDto>(category),
+                    };
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    return new BaseResult<CategoryDto>()
+                    {
+                        ErrorMessage = ErrorMessages.ErrorDeleteProductInCategory,
+                        ErrorCode = (int)ErrorCodes.ErrorDeleteProductInCategory
+                    };
+                }
             }
-            return new BaseResult<CategoryDto>
-            {
-                Data = _mapper.Map<CategoryDto>(category),
-            };
         }
 
         public async Task<BaseResult<CategoryDto>> AddProductInCategoryAsync(ProductInCategoryDto dto)

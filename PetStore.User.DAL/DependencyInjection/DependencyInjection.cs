@@ -28,6 +28,7 @@ namespace PetStore.Users.DAL.DependencyInjection
         }
         public static void Interceptor(this IServiceCollection services)
         {
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IBaseRepository<Address>, BaseRepository<Address>>();
             services.AddScoped<IBaseRepository<Cart>, BaseRepository<Cart>>();
             services.AddScoped<IBaseRepository<CartLine>, BaseRepository<CartLine>>();

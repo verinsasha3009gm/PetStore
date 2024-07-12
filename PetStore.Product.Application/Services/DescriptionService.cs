@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 
 namespace PetStore.Products.Application.Services
 {
@@ -19,13 +20,15 @@ namespace PetStore.Products.Application.Services
     {
         private readonly IBaseRepository<Description> _descriptionRepository;
         private readonly IBaseRepository<Product> _productRepository;
+        private readonly IUnitOFWork _UnitOfWork;
         private readonly IMapper _mapper;
         public DescriptionService(IBaseRepository<Description> descriptionRepository,
-            IBaseRepository<Product> productRepository, IMapper mapper)
+            IBaseRepository<Product> productRepository, IMapper mapper,IUnitOFWork unitOFWork)
         {
             _descriptionRepository = descriptionRepository;
             _productRepository = productRepository;
             _mapper = mapper;
+            _UnitOfWork = unitOFWork;
         }
         public async Task<BaseResult<DescriptionDto>> AddDescriptionCultureAsync(DescriptionCultureDto dto)
         {
@@ -54,27 +57,30 @@ namespace PetStore.Products.Application.Services
                  Detail = dto.detail, 
                  ProductСomposition = dto.productСomposition,
             };
-            try
-            {  
-                await _descriptionRepository.CreateAsync(description);
-                await _descriptionRepository.SaveChangesAsync();
-                product.DescriptionList.Add(description);
-                _productRepository.UpdateAsync(product);
-                await _productRepository.SaveChangesAsync();
-            }
-            catch (Exception ex)
+            using(var transaction= await _UnitOfWork.BeginTransitionAsync())
             {
-                return new BaseResult<DescriptionDto>()
+                try
+                {  
+                    await _UnitOfWork.Descriptions.CreateAsync(description);
+                    product.DescriptionList.Add(description);
+                    _UnitOfWork.Products.UpdateAsync(product);
+                    await _UnitOfWork.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return new BaseResult<DescriptionDto>
+                    {
+                        Data = _mapper.Map<DescriptionDto>(description)
+                    };
+                }
+                catch (Exception ex)
                 {
-                    ErrorCode = (int) ErrorCodes.ErrorCreateDescription,
-                    ErrorMessage = ErrorMessages.ErrorCreateDescription,
-                };
+                    await transaction.RollbackAsync();
+                    return new BaseResult<DescriptionDto>()
+                    {
+                        ErrorCode = (int) ErrorCodes.ErrorCreateDescription,
+                        ErrorMessage = ErrorMessages.ErrorCreateDescription,
+                    };
+                }
             }
-            return new BaseResult<DescriptionDto>
-            {
-                Data = _mapper.Map<DescriptionDto>(description),
-                
-            };
         }
 
         public async Task<BaseResult<DescriptionDto>> GetDescriptionCultureAsync(string Name,string Culture)
@@ -144,26 +150,31 @@ namespace PetStore.Products.Application.Services
                     ErrorMessage = ErrorMessages.DescriptionNotFound
                 };
             }
-            try
+
+            using (var transaction = await _UnitOfWork.BeginTransitionAsync())
             {
-                prod.DescriptionList.Remove(description);
-                _productRepository.UpdateAsync(prod);
-                await _productRepository.SaveChangesAsync();
-                _descriptionRepository.DeleteAsync(description);
-                await _descriptionRepository.SaveChangesAsync();
-            }
-            catch
-            {
-                return new BaseResult<DescriptionDto>()
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.ErrorDeleteDescription,
-                    ErrorMessage = ErrorMessages.ErrorDeleteDescription
-                };
+                    prod.DescriptionList.Remove(description);
+                    _UnitOfWork.Products.UpdateAsync(prod);
+                    _UnitOfWork.Descriptions.DeleteAsync(description);
+                    await _UnitOfWork.SaveChangesAsync();
+                    await transaction.CommitAsync();   
+                    return new BaseResult<DescriptionDto>
+                    {
+                        Data = _mapper.Map<DescriptionDto>(description)
+                    };                                              
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    return new BaseResult<DescriptionDto>()
+                    {
+                        ErrorCode = (int)ErrorCodes.ErrorDeleteDescription,
+                        ErrorMessage = ErrorMessages.ErrorDeleteDescription
+                    };
+                }
             }
-            return new BaseResult<DescriptionDto>
-            {
-                Data = _mapper.Map<DescriptionDto>(description)
-            };
         }
 
         public async Task<BaseResult<DescriptionDto>> UpdateDescriptionCultureAsync(DescriptionCultureDto dto)

@@ -37,6 +37,9 @@ namespace PetStore.Users.DAL.Configuration
             builder.HasMany(p => p.Roles).WithMany(p => p.Users).UsingEntity<UserRole>(
                 p => p.HasOne<Role>().WithMany().HasForeignKey(p => p.RoleId),
                 p => p.HasOne<User>().WithMany().HasForeignKey(p => p.UserId));
+
+            builder.HasIndex(p => p.GuidId);
+
             builder.HasData(new List<User>
             {
                 //password qwertyuiop

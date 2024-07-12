@@ -8,15 +8,14 @@ using PetStore.Users.Consumer.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection(nameof(RabbitMqSettings)));
-
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.Defaultsection));
+builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection(nameof(RedisSettings)));
 
 builder.Services.AddControllers();
 builder.Services.AddSwagger();
-builder.Services.AddRedis();
 
 builder.Services.AddDataAccessAssembly(builder.Configuration);
-builder.Services.AddDependencyInjection();
+builder.Services.AddDependencyInjection(builder.Configuration);
 
 builder.Host.UseSerilog((context, configuration)
     => configuration.ReadFrom.Configuration(context.Configuration));
@@ -36,6 +35,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddConsumer();
 
 var app = builder.Build();
+
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())

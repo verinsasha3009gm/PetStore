@@ -53,6 +53,17 @@ namespace PetStore.Products.DAL.Configurations
                     DescriptionList = new List<Description> {},
                     Tegs = new List<Teg> {},
 
+                },
+                new Product
+                {
+                    Id = 3,
+                    Name="Name2",
+                    Description = "Description",
+                    Price =199,
+                    GuidId = Guid.NewGuid().ToString(),
+                    //CategoryId = 1,
+                    Tegs = new List<Teg> {},
+                    DescriptionList = new List<Description> {}
                 }
             });
         }

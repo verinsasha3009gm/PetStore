@@ -29,7 +29,7 @@ namespace PetStore.Markets.API.Controllers
         [HttpGet("Name/{Name}/{Familien}")]
         public async Task<ActionResult<CollectionResult<PassportDto>>> GetPassportNameAsync(string Name, string Familien)
         {
-            var result = await _passportService.GetPassportNameAsync(Name,Familien);
+            var result = await _passportService.GetAllPassportNameAsync(Name,Familien);
             if (result.IsSucces)
             {
                 return Ok(result);

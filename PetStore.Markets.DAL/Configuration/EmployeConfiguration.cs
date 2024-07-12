@@ -20,6 +20,7 @@ namespace PetStore.Markets.DAL.Configuration
             builder.Property(p => p.Password).IsRequired().HasMaxLength(100);
             builder.Property(p=>p.Gender).IsRequired().HasMaxLength(100);
 
+            builder.HasIndex(p => p.GuidId);
             builder.HasOne(p => p.Passport)
                .WithOne(p => p.Employe)
                .HasForeignKey<Employe>(p => p.PassportId)

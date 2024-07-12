@@ -33,10 +33,17 @@ namespace PetStore.Users.Tests
                 .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.User.Tests;User Id=postgres;Password=qwerpoiu")
                 .Options;
             var DbContext = new ApplicationDbContext(options);
-            var repositoryMockCart= new BaseRepository<Cart>(DbContext);
-            var repositoryMockUser = new BaseRepository<Users.Domain.Entity.User>(DbContext);
-            var repositoryMockCartLine = new BaseRepository<CartLine>(DbContext);
-            var repositoryMockProduct = new BaseRepository<Product>(DbContext);
+            var repositoryAddress = new BaseRepository<Address>(DbContext);
+            var repositoryUser = new BaseRepository<User>(DbContext);
+            var repositoryUserRole = new BaseRepository<UserRole>(DbContext);
+            var repositoryProduct = new BaseRepository<Product>(DbContext);
+            var repositoryRole = new BaseRepository<Role>(DbContext);
+            var repositoryCart = new BaseRepository<Cart>(DbContext);
+            var repositoryCartLine = new BaseRepository<CartLine>(DbContext);
+
+            var UnitOfWork = new UnitOfWork(DbContext, repositoryProduct, repositoryUser, repositoryUserRole, repositoryRole, repositoryAddress
+                , repositoryCart, repositoryCartLine);
+
             var mappingConfig = new MapperConfiguration(mc =>
             {
                 mc.AddProfile(new CartMapping());
@@ -47,60 +54,68 @@ namespace PetStore.Users.Tests
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
-            ICartService cartService = new CartService(repositoryMockCart
-                , repositoryMockUser, repositoryMockCartLine,repositoryMockProduct, mapper, logger.Object,cache);
+            ICartService cartService = new CartService(repositoryCart
+                , repositoryUser, repositoryCartLine,repositoryProduct,UnitOfWork, mapper, logger.Object,cache);
             _controller = new(cartService);
         }
         [Fact]
-        public async Task GetTests()
+        public async Task Get_CartInUser_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
+            //Act
             var result = await
                 _controller.GetUserCartAsync("TestLogin");
+            //Assert
             var actionResult = Assert
             .IsType<ActionResult<BaseResult<CartDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             Assert.IsType<BaseResult<CartDto>>(okRequestResult.Value);
-
+        }
+        [Fact]
+        public async Task GetAll_CartInUser_Test()
+        {
+            //Arrange
+            //Act
             var resultAll = await
                 _controller.GetUserAllCartLinesAsync("TestLogin");
-
+            //Assert
             var actionResultAll = Assert
             .IsType<ActionResult<CollectionResult<CartLineDto>>>(resultAll);
             var okRequestResultAll = Assert.IsType<OkObjectResult>(actionResultAll.Result);
             Assert.IsType<CollectionResult<CartLineDto>>(okRequestResultAll.Value);
         }
         [Fact]
-        public async Task AddRemoveCartTests()
+        public async Task AddAndRemove_Cart_Test()
         {
-            var random = new Random();
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
             var dto = new CartLineUserDto("TestLogin", "00000000-0000-0000-0000-000000000003");
+            //Act
             var result = await
                 _controller.AddUserCartLinesAsync(dto);
+            //Assert
             var actionResult = Assert
             .IsType<ActionResult<BaseResult<CartLineDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             Assert.IsType<BaseResult<CartLineDto>>(okRequestResult.Value);
-            //
-            //необходимо дать новое айди удаления
-            //
+
+            //Arrange
+            //Act
             var resultAll = await
                 _controller.RemoveUserCartLineAsync("00000000-0000-0000-0000-000000000003", "TestLogin");
-
+            //Assert
             var actionResultAll = Assert
             .IsType<ActionResult<BaseResult<CartLineDto>>>(resultAll);
             var okRequestResultAll = Assert.IsType<OkObjectResult>(actionResultAll.Result);
             Assert.IsType<BaseResult<CartLineDto>>(okRequestResultAll.Value);
         }
         [Fact]
-        public async Task ClearCartTest()
+        public async Task Clear_Cart_Test()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
+            //Arrange
+            //Act
             var result = await
                 _controller.ClearUserCartAsync("TestLogin");
+            //Assert
             var actionResult = Assert
             .IsType<ActionResult<BaseResult<CartDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);

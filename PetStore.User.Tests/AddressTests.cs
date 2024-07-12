@@ -34,8 +34,17 @@ namespace PetStore.Users.Tests
                 //.UseSnakeCaseNamingConvention()
                 .Options;
             var DbContext = new ApplicationDbContext(options);
-            var repositoryMockProduct = new BaseRepository<Address>(DbContext);
-            var repositoryMockUser = new BaseRepository<Domain.Entity.User>(DbContext);
+            var repositoryAddress = new BaseRepository<Address>(DbContext);
+            var repositoryUser = new BaseRepository<User>(DbContext);
+            var repositoryUserRole = new BaseRepository<UserRole>(DbContext);
+            var repositoryProduct = new BaseRepository<Product>(DbContext);
+            var repositoryRole = new BaseRepository<Role>(DbContext);
+            var repositoryCart = new BaseRepository<Cart>(DbContext);
+            var repositoryCartLine = new BaseRepository<CartLine>(DbContext);
+
+            var UnitOfWork = new UnitOfWork(DbContext, repositoryProduct, repositoryUser, repositoryUserRole, repositoryRole, repositoryAddress
+                , repositoryCart, repositoryCartLine);
+
             var mappingConfig = new MapperConfiguration(mc =>
             {
                 mc.AddProfile(new AddressMapping());
@@ -45,17 +54,17 @@ namespace PetStore.Users.Tests
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
-            IAddressService addressService = new AddressService(repositoryMockProduct
-                , repositoryMockUser, mapper,logger.Object,cache);
+            IAddressService addressService = new AddressService(repositoryAddress
+                , repositoryUser, mapper,logger.Object,cache,UnitOfWork);
             _controller = new(addressService);
         }
         [Fact]
         public async Task AddressTest()
         {
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
+            //Arrange
+            //Act
             var resultAll = await _controller.GetAllAddressesInUserAsync("TestLogin");
-            
+            //Assert
             var actionResultAll = Assert
             .IsType<ActionResult<CollectionResult<AddressDto>>>(resultAll);
             var badRequestResultAll = Assert.IsType<OkObjectResult>(actionResultAll.Result);
@@ -64,29 +73,35 @@ namespace PetStore.Users.Tests
         [Fact]
         public async Task AddressAddTest()
         {
+            //Arrange
             var random = new Random();
-            _controller.ModelState.AddModelError("FirstName", "Required");
-
             var dto = new AddressInUserDto
                 ("TestLogin", $"#TestRegion{random.Next(212321)}", "#TestCountry", "#TestCity", "#TestString");
+            //Act
             var result = await
                 _controller.AddAddressInUserAsync(dto);
+            //Assert
             var actionResult = Assert
             .IsType<ActionResult<BaseResult<AddressDto>>>(result);
             var okRequestResult = Assert.IsType<OkObjectResult>(actionResult.Result);
             var Data = Assert.IsType<BaseResult<AddressDto>>(okRequestResult.Value);
             Assert.NotNull(Data);
 
+            //Arrange
+            //Act
             var resultGet = await
                 _controller.GetAddressInUserAsync(Data.Data.GuidId, "TestLogin");
+            //Assert
             var actionResultGet = Assert
             .IsType<ActionResult<BaseResult<AddressDto>>>(resultGet);
             var badRequestResultGet = Assert.IsType<OkObjectResult>(actionResultGet.Result);
             Assert.IsType<BaseResult<AddressDto>>(badRequestResultGet.Value);
-        
+            
+            //Arrange
+            //Act
             var resultDelete = await
                 _controller.RemoveAddressInUserAsync(Data.Data.GuidId, "TestLogin");
-
+            //Assert
             var actionResultDelete = Assert
             .IsType<ActionResult<BaseResult<AddressDto>>>(resultDelete);
             var okRequestResultDelete = Assert.IsType<OkObjectResult>(actionResultDelete.Result);

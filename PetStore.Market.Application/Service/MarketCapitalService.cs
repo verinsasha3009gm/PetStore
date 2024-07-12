@@ -27,9 +27,11 @@ namespace PetStore.Markets.Application.Service
         private readonly IMapper _mapper;
         private readonly ILogger _logger;
         private readonly ICacheService _cacheService;
+        private readonly IUnitOfWork _unitOfwork;
         public MarketCapitalService(IBaseRepository<MarketCapital> marketCapitalRepository,
             IBaseRepository<ProductLine> productLineRepository, IBaseRepository<Product> productRepository,
-            IBaseRepository<Market> marketRepository,IMapper mapper,ILogger logger,ICacheService cacheService)
+            IBaseRepository<Market> marketRepository,IMapper mapper,ILogger logger,ICacheService cacheService,
+            IUnitOfWork unitOfWork)
         {
             _marketCapitalRepository = marketCapitalRepository;
             _productLineRepository = productLineRepository;
@@ -38,6 +40,7 @@ namespace PetStore.Markets.Application.Service
             _mapper = mapper;
             _logger = logger;
             _cacheService = cacheService;
+            _unitOfwork = unitOfWork;
         }
         public async Task<BaseResult<MarketCapitalDto>> AddProductLineInMarketAsync(MarketCapitalProductLineDto dto)
         {
@@ -94,34 +97,41 @@ namespace PetStore.Markets.Application.Service
                 GuidId = Guid.NewGuid().ToString(),
                 MarketCapitals = new List<MarketCapital>()
             };
-            try
+            using(var transaction = await _unitOfwork.BeginTransitionAsync())
             {
-                prodLine.MarketCapitals.Add(marketCapitalDaily);
-                prodLine = await _productLineRepository.CreateAsync(prodLine);
-                _cacheService.Set(prodLine.GuidId, prodLine);
-                marketCapitalDaily.ProductsSold.Add(prodLine);
-
-                _marketCapitalRepository.UpdateAsync(marketCapitalDaily);
-                await _marketCapitalRepository.SaveChangesAsync();
-
-                market.MarketCapitals.Add(marketCapitalDaily);
-                _marketRepository.UpdateAsync(market);
-                await _marketRepository.SaveChangesAsync();
-                _cacheService.Set(market.GuidId, market);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<MarketCapitalDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.MarketCapitalCreateError,
-                    ErrorMessage = ErrorMessage.MarketCapitalCreateError
-                };
+                    prodLine.MarketCapitals.Add(marketCapitalDaily);
+                    prodLine = await _unitOfwork.ProductLines.CreateAsync(prodLine);
+                    _cacheService.Set(prodLine.GuidId, prodLine);
+                    marketCapitalDaily.ProductsSold.Add(prodLine);
+
+                    _marketCapitalRepository.UpdateAsync(marketCapitalDaily);
+                    await _marketCapitalRepository.SaveChangesAsync();
+
+                    market.MarketCapitals.Add(marketCapitalDaily);
+                    _marketRepository.UpdateAsync(market);
+                    await _marketRepository.SaveChangesAsync();
+                    _cacheService.Set(market.GuidId, market);
+
+                    await transaction.CommitAsync();
+                    return new BaseResult<MarketCapitalDto>
+                    {
+                        Data = _mapper.Map<MarketCapitalDto>(marketCapitalDaily),
+                    };
+
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<MarketCapitalDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.MarketCapitalCreateError,
+                        ErrorMessage = ErrorMessage.MarketCapitalCreateError
+                    };
+                }
             }
-            return new BaseResult<MarketCapitalDto>
-            {
-                Data = _mapper.Map<MarketCapitalDto>(marketCapitalDaily),
-            };
         }
         public async Task<BaseResult<MarketCapitalDto>> GetMarketCapitalAsync(string Day, string guidMarketId)
         {
@@ -322,27 +332,33 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.MarketCapitalNotFound
                 };
             }
-            try
+            using(var transaction = await _unitOfwork.BeginTransitionAsync())
             {
-                _marketCapitalRepository.DeleteAsync(marketCapital);
-                await _marketCapitalRepository.SaveChangesAsync();
-                _marketRepository.UpdateAsync(market);
-                await _marketRepository.SaveChangesAsync();
-                _cacheService.Set<Market>(market.GuidId,market);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, ex.Message);
-                return new BaseResult<MarketCapitalDto>
+                try
                 {
-                    ErrorCode = (int)ErrorCodes.MarketCapitalDeleteError,
-                    ErrorMessage = ErrorMessage.MarketCapitalDeleteError,
-                };
+                    _marketCapitalRepository.DeleteAsync(marketCapital);
+                    await _marketCapitalRepository.SaveChangesAsync();
+                    _marketRepository.UpdateAsync(market);
+                    await _marketRepository.SaveChangesAsync();
+                    _cacheService.Set<Market>(market.GuidId,market);
+
+                    await transaction.CommitAsync();
+                    return new BaseResult<MarketCapitalDto>
+                    {
+                        Data = _mapper.Map<MarketCapitalDto>(marketCapital),
+                    };
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.Error(ex, ex.Message);
+                    return new BaseResult<MarketCapitalDto>
+                    {
+                        ErrorCode = (int)ErrorCodes.MarketCapitalDeleteError,
+                        ErrorMessage = ErrorMessage.MarketCapitalDeleteError,
+                    };
+                }
             }
-            return new BaseResult<MarketCapitalDto>
-            {
-                Data = _mapper.Map<MarketCapitalDto>(marketCapital),
-            };
         }
     }
 }
