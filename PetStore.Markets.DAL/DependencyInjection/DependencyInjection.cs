@@ -35,6 +35,8 @@ namespace PetStore.Markets.DAL.DependencyInjection
             service.AddScoped<IBaseRepository<MarketCapital>,BaseRepository<MarketCapital>>();
             service.AddScoped<IBaseRepository<Token>,BaseRepository<Token>>();
             service.AddScoped<IBaseRepository<ProductLine>,BaseRepository<ProductLine>>();
+
+            service.AddScoped<IBaseRepository<MarketCapitalProductLine>,BaseRepository<MarketCapitalProductLine>>();
         }
     }
 }

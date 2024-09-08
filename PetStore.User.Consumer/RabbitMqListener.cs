@@ -11,6 +11,7 @@ using PetStore.Users.Application.Services;
 using PetStore.Users.DAL;
 using PetStore.Users.DAL.Repository;
 using PetStore.Users.Domain.Entity;
+using PetStore.Users.Domain.Interfaces.Repositories;
 using PetStore.Users.Domain.Interfaces.Services;
 using PetStore.Users.Domain.Result;
 using PetStore.Users.Domain.Settings;
@@ -39,10 +40,18 @@ namespace PetStore.Users.Consumer
                 arguments: null);
 
             var optionsDb = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.UserData;User Id=postgres;Password=qwerpoiu")
+                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.UserData;User Id=postgres;Password=qwertyuiop")
                 .Options;
             var DbContext = new ApplicationDbContext(optionsDb);
-            var repositoryProduct = new BaseRepository<Product>(DbContext);
+            var productRepository = new BaseRepository<Product>(DbContext);
+            var userRepository = new BaseRepository<User>(DbContext);
+            var userRoleRepository = new BaseRepository<UserRole>(DbContext);
+            var roleRepository = new BaseRepository<Role>(DbContext);
+            var addressRepository = new BaseRepository<Address>(DbContext);
+            var cartRepository = new BaseRepository<Cart>(DbContext);
+            var cartLineRepository = new BaseRepository<CartLine>(DbContext);
+            var unitOfWork = new UnitOfWork(DbContext,productRepository, userRepository, userRoleRepository
+                , roleRepository, addressRepository, cartRepository, cartLineRepository);
             var mappingConfig = new MapperConfiguration(mc =>
             {
                 mc.AddProfile(new ProductMapping());
@@ -53,12 +62,9 @@ namespace PetStore.Users.Consumer
             var opts = Options.Create<MemoryDistributedCacheOptions>(new MemoryDistributedCacheOptions());
             IDistributedCache distrCache = new MemoryDistributedCache(opts);
             var cache = new CacheService(distrCache);
-            _productService = new ProductService(repositoryProduct, mapper, logger.Object, cache);
+            _productService = new ProductService(productRepository, mapper, logger.Object, cache);
 
-            var addressRepository = new BaseRepository<Address>(DbContext);
-            var userRepository = new BaseRepository<User>(DbContext);
-            
-            _addressService = new AddressService(addressRepository,userRepository,mapper,logger.Object,cache);
+            _addressService = new AddressService(addressRepository,userRepository,mapper,logger.Object,cache,unitOfWork);
         }
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {

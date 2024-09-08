@@ -24,7 +24,7 @@ builder.Host.UseSerilog().ConfigureLogging(logging =>
     logging.SetMinimumLevel(LogLevel.Information);
 });
 
-builder.Services.AddConsumer();
+//builder.Services.AddConsumer();
 builder.Services.AddProducer();
 
 var app = builder.Build();

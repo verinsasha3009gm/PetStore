@@ -25,7 +25,7 @@ namespace PetStore.Users.Tests
         public UserRoleTests()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.User.Tests;User Id=postgres;Password=qwerpoiu")
+                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.User.Tests;User Id=postgres;Password=qwertyuiop")
                 .Options;
 
             var DbContext = new ApplicationDbContext(options);

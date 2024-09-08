@@ -9,10 +9,8 @@ using PetStore.Markets.Domain.Interfaces.Repositories;
 using PetStore.Markets.Domain.Interfaces.Service;
 using PetStore.Markets.Domain.Result;
 using Serilog;
-using System;
 using Microsoft.Extensions.Options;
 using PetStore.Markets.Domain.Settings;
-using Microsoft.VisualBasic;
 
 namespace PetStore.Markets.Application.Service
 {
@@ -32,7 +30,7 @@ namespace PetStore.Markets.Application.Service
         public AddressService(IBaseRepository<Address> AddressRepository, IBaseRepository<User> userRepository,
             IBaseRepository<Employe> empRepository, IBaseRepository<EmployePassport> empPassportRepository,
             IBaseRepository<Market> marketRepository,IMapper mapper, ILogger logger, ICacheService cacheService,
-            IMessageProducer messageProducer,IOptions<RabbitMqSettings> rabbitOptions,IUnitOfWork unitOfWork)
+            IMessageProducer messageProducer,IOptions<RabbitMqSettings> rabbitOptions, IUnitOfWork unitOfWork)
         {
             _AddressRepository = AddressRepository;
             _UserRepository = userRepository;

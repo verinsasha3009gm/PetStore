@@ -22,7 +22,7 @@ namespace PetStore.Products.DAL.DependencyInjection
             services.AddSingleton<DataInterceptors>();
             services.AddDbContext<ApplicationDbContext>(opt =>
             {
-                opt.UseNpgsql("Server=localhost;Port=5432;Database=PetStore.ProductData;User Id=postgres;Password=qwerpoiu");
+                opt.UseNpgsql(connectionString);
             });
             services.Inteseptor();
         }

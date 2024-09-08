@@ -43,7 +43,7 @@ namespace PetStore.Markets.Consumer
                 arguments: null);
 
             var optionsDb = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.MarketData;User Id=postgres;Password=qwerpoiu")
+                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.MarketData;User Id=postgres;Password=qwertyuiop")
                 .Options;
             var DbContext = new ApplicationDbContext(optionsDb);
             var repositoryMockProduct = new BaseRepository<Product>(DbContext);

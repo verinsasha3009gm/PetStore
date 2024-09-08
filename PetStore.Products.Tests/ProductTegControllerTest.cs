@@ -23,7 +23,7 @@ namespace PetStore.Products.Tests
         public ProductTegControllerTest()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.Product.Tests;User Id=postgres;Password=qwerpoiu")
+                .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.Product.Tests;User Id=postgres;Password=qwertyuiop")
                 //.UseSnakeCaseNamingConvention()
                 .Options;
             var DbContext = new ApplicationDbContext(options);

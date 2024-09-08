@@ -29,7 +29,7 @@ namespace PetStore.Markets.Test
         public MarketControllerTest()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-               .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.Market.Tests;User Id=postgres;Password=qwerpoiu")
+               .UseNpgsql("Server=localhost;Port=5432;Database=PetStore.Market.Tests;User Id=postgres;Password=qwertyuiop")
                .Options;
 
             var DbContext = new ApplicationDbContext(options);

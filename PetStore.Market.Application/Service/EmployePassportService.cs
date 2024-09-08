@@ -9,12 +9,6 @@ using PetStore.Markets.Domain.Interfaces.Repositories;
 using PetStore.Markets.Domain.Interfaces.Service;
 using PetStore.Markets.Domain.Result;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PetStore.Markets.Application.Service
 {
@@ -109,7 +103,7 @@ namespace PetStore.Markets.Application.Service
                     ErrorMessage = ErrorMessage.EmployePassportNotFound
                 };
             }
-            using(var trasaction = await _unitOfWork.BeginTransitionAsync())
+            using (var trasaction = await _unitOfWork.BeginTransitionAsync())
             {
                 try
                 {
@@ -118,7 +112,7 @@ namespace PetStore.Markets.Application.Service
                         Post = dto.Post,
                         Salary = dto.Salary,
                         Experience = dto.Expirience,
-                        GuidId =Guid.NewGuid().ToString(),
+                        GuidId = Guid.NewGuid().ToString(),
                         EnployeId = emp.Id,
                     };
                     empPassport = await _unitOfWork.EmployesPassports.CreateAsync(empPassport);
@@ -146,7 +140,6 @@ namespace PetStore.Markets.Application.Service
                     };
                 }
             }
-            
         }
 
         public async Task<BaseResult<EmployePassportDto>> DeleteEmployePassportAsync(string Email, string Password)

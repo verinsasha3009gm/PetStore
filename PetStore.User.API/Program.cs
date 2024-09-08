@@ -32,7 +32,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 });
 //builder.Services.AddProducer();
 
-builder.Services.AddConsumer();
+//builder.Services.AddConsumer();
 
 var app = builder.Build();
 

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace PetStore.Markets.Application.DependencyInjection
 {
-    public static class DependenyInjection
+    public static class DependencyInjection
     {
         public static void AddDependencyInjection(this IServiceCollection service,IConfiguration configuration)
         {
