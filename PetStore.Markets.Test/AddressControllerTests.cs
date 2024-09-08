@@ -16,6 +16,7 @@ using PetStore.Markets.Domain.Result;
 using PetStore.Markets.Domain.Settings;
 using PetStore.Markets.Producer.Interfaces;
 using Serilog;
+using RabbitMQ.Client;
 
 namespace PetStore.Markets.Test
 {
@@ -55,9 +56,9 @@ namespace PetStore.Markets.Test
             IMessageProducer producer = new Producer.Producer();
             IOptions<RabbitMqSettings> optRabbit = Options.Create<RabbitMqSettings>(new RabbitMqSettings()
             {
-                ExchangeName = "",
-                QueueName = "",
-                RoutingKey = ""
+                ExchangeName = "petstore.product.exchange",
+                QueueName = "queue",
+                RoutingKey = "petstore.product.topic"
             });
             var addressService =
                 new AddressService(AddressRepository,UserRepository,EmployeRepository,EmployePassportRepository

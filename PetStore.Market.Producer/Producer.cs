@@ -17,14 +17,13 @@ namespace PetStore.Markets.Producer
             var factory = new ConnectionFactory() { HostName = "localhost" };
             var connection = factory.CreateConnection();
             using var channel = connection.CreateModel();
-            var p = nameof(message);
-            var messResult = new MessageResult<T>()
+            var messageResult = new MessageResult<T>()
             {
                 Data = message,
                 HttpMethod = HttpMethod,
                 TypeMessage = message.GetType().Name,
             };
-            var json = JsonConvert.SerializeObject(messResult, Formatting.Indented,
+            var json = JsonConvert.SerializeObject(messageResult, Formatting.Indented,
                 new JsonSerializerSettings()
                 {
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore
